@@ -104,7 +104,7 @@ type RecordaAPIGetRequest struct {
 	getDoc           *int32
 	schemaSearchable *int32
 	inheritance      *bool
-	body             *map[string]interface{}
+	filters          *map[string]interface{}
 }
 
 // Enter the field names followed by comma
@@ -179,9 +179,8 @@ func (r RecordaAPIGetRequest) Inheritance(inheritance bool) RecordaAPIGetRequest
 	return r
 }
 
-// Enter the GET request body here
-func (r RecordaAPIGetRequest) Body(body map[string]interface{}) RecordaAPIGetRequest {
-	r.body = &body
+func (r RecordaAPIGetRequest) Filters(filters map[string]interface{}) RecordaAPIGetRequest {
+	r.filters = &filters
 	return r
 }
 
@@ -225,49 +224,52 @@ func (a *RecordaAPIService) GetExecute(r RecordaAPIGetRequest) (*ListRecordAResp
 	localVarFormParams := url.Values{}
 
 	if r.returnFields != nil {
-		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_return_fields", r.returnFields, "")
+		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_return_fields", r.returnFields, "", "")
 	}
 	if r.returnFields2 != nil {
-		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_return_fields+", r.returnFields2, "")
+		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_return_fields+", r.returnFields2, "", "")
 	}
 	if r.maxResults != nil {
-		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_max_results", r.maxResults, "")
+		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_max_results", r.maxResults, "", "")
 	}
 	if r.returnAsObject != nil {
-		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_return_as_object", r.returnAsObject, "")
+		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_return_as_object", r.returnAsObject, "", "")
 	} else {
 		var defaultValue int32 = 0
 		r.returnAsObject = &defaultValue
 	}
 	if r.paging != nil {
-		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_paging", r.paging, "")
+		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_paging", r.paging, "", "")
 	} else {
 		var defaultValue int32 = 0
 		r.paging = &defaultValue
 	}
 	if r.pageId != nil {
-		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_page_id", r.pageId, "")
+		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_page_id", r.pageId, "", "")
 	}
 	if r.proxySearch != nil {
-		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_proxy_search", r.proxySearch, "")
+		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_proxy_search", r.proxySearch, "", "")
 	}
 	if r.schema != nil {
-		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_schema", r.schema, "")
+		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_schema", r.schema, "", "")
 	}
 	if r.schemaVersion != nil {
-		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_schema_version", r.schemaVersion, "")
+		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_schema_version", r.schemaVersion, "", "")
 	}
 	if r.getDoc != nil {
-		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_get_doc", r.getDoc, "")
+		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_get_doc", r.getDoc, "", "")
 	}
 	if r.schemaSearchable != nil {
-		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_schema_searchable", r.schemaSearchable, "")
+		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_schema_searchable", r.schemaSearchable, "", "")
 	}
 	if r.inheritance != nil {
-		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_inheritance", r.inheritance, "")
+		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_inheritance", r.inheritance, "", "")
+	}
+	if r.filters != nil {
+		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "filters", r.filters, "form", "")
 	}
 	// to determine the Content-Type header
-	localVarHTTPContentTypes := []string{"application/json"}
+	localVarHTTPContentTypes := []string{}
 
 	// set Content-Type header
 	localVarHTTPContentType := internal.SelectHeaderContentType(localVarHTTPContentTypes)
@@ -283,8 +285,6 @@ func (a *RecordaAPIService) GetExecute(r RecordaAPIGetRequest) (*ListRecordAResp
 	if localVarHTTPHeaderAccept != "" {
 		localVarHeaderParams["Accept"] = localVarHTTPHeaderAccept
 	}
-	// body params
-	localVarPostBody = r.body
 	req, err := a.Client.PrepareRequest(r.ctx, localVarPath, localVarHTTPMethod, localVarPostBody, localVarHeaderParams, localVarQueryParams, localVarFormParams, formFiles)
 	if err != nil {
 		return localVarReturnValue, nil, err
@@ -391,13 +391,13 @@ func (a *RecordaAPIService) PostExecute(r RecordaAPIPostRequest) (*CreateRecordA
 	}
 
 	if r.returnFields != nil {
-		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_return_fields", r.returnFields, "")
+		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_return_fields", r.returnFields, "", "")
 	}
 	if r.returnFields2 != nil {
-		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_return_fields+", r.returnFields2, "")
+		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_return_fields+", r.returnFields2, "", "")
 	}
 	if r.returnAsObject != nil {
-		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_return_as_object", r.returnAsObject, "")
+		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_return_as_object", r.returnAsObject, "", "")
 	} else {
 		var defaultValue int32 = 0
 		r.returnAsObject = &defaultValue
@@ -520,13 +520,13 @@ func (a *RecordaAPIService) RecordaReferenceDeleteExecute(r RecordaAPIRecordaRef
 	localVarFormParams := url.Values{}
 
 	if r.returnFields != nil {
-		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_return_fields", r.returnFields, "")
+		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_return_fields", r.returnFields, "", "")
 	}
 	if r.returnFields2 != nil {
-		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_return_fields+", r.returnFields2, "")
+		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_return_fields+", r.returnFields2, "", "")
 	}
 	if r.returnAsObject != nil {
-		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_return_as_object", r.returnAsObject, "")
+		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_return_as_object", r.returnAsObject, "", "")
 	} else {
 		var defaultValue int32 = 0
 		r.returnAsObject = &defaultValue
@@ -643,13 +643,13 @@ func (a *RecordaAPIService) RecordaReferenceGetExecute(r RecordaAPIRecordaRefere
 	localVarFormParams := url.Values{}
 
 	if r.returnFields != nil {
-		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_return_fields", r.returnFields, "")
+		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_return_fields", r.returnFields, "", "")
 	}
 	if r.returnFields2 != nil {
-		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_return_fields+", r.returnFields2, "")
+		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_return_fields+", r.returnFields2, "", "")
 	}
 	if r.returnAsObject != nil {
-		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_return_as_object", r.returnAsObject, "")
+		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_return_as_object", r.returnAsObject, "", "")
 	} else {
 		var defaultValue int32 = 0
 		r.returnAsObject = &defaultValue
@@ -783,13 +783,13 @@ func (a *RecordaAPIService) RecordaReferencePutExecute(r RecordaAPIRecordaRefere
 	}
 
 	if r.returnFields != nil {
-		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_return_fields", r.returnFields, "")
+		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_return_fields", r.returnFields, "", "")
 	}
 	if r.returnFields2 != nil {
-		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_return_fields+", r.returnFields2, "")
+		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_return_fields+", r.returnFields2, "", "")
 	}
 	if r.returnAsObject != nil {
-		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_return_as_object", r.returnAsObject, "")
+		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_return_as_object", r.returnAsObject, "", "")
 	} else {
 		var defaultValue int32 = 0
 		r.returnAsObject = &defaultValue

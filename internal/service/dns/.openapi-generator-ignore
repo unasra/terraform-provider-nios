@@ -29,11 +29,12 @@
 # By default all resource, datasource, models and their tests are ignored.
 # Add specific files that you want to generate
 api*.go
-!model_record_a.go
-recorda_data_source*
+model_record_a.go
+!recorda_data_source.go
 
 *_resource_*.go
 *_data_source_*.go
+*_model_*.go
 
 model_record_a_ipv4addr.go
 model_record_a_ipv4addr_one_of.go

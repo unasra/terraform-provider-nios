@@ -3,12 +3,12 @@ package dns
 import (
 	"context"
 	"fmt"
-	"github.com/hashicorp/terraform-plugin-framework/types"
 	"net/http"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	niosclient "github.com/unasra/nios-go-client/client"
 	"github.com/unasra/nios-go-client/dns"
@@ -33,8 +33,8 @@ func (d *RecordaDataSource) Metadata(ctx context.Context, req datasource.Metadat
 }
 
 type RecordAModelWithFilter struct {
-	Result types.List `tfsdk:"result"`
-	Body   types.Map  `tfsdk:"body"`
+	Filters types.Map  `tfsdk:"filters"`
+	Result  types.List `tfsdk:"result"`
 }
 
 func (m *RecordAModelWithFilter) FlattenResults(ctx context.Context, from []dns.RecordA, diags *diag.Diagnostics) {
@@ -48,16 +48,16 @@ func (d *RecordaDataSource) Schema(ctx context.Context, req datasource.SchemaReq
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "",
 		Attributes: map[string]schema.Attribute{
+			"filters": schema.MapAttribute{
+				Description: "Filter are used to return a more specific list of results. Filters can be used to match resources by specific attributes, e.g. name. If you specify multiple filters, the results returned will have only resources that match all the specified filters.",
+				ElementType: types.StringType,
+				Optional:    true,
+			},
 			"result": schema.ListNestedAttribute{
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: utils.DataSourceAttributeMap(RecordAResourceSchemaAttributes, &resp.Diagnostics),
 				},
 				Computed: true,
-			},
-			"body": schema.MapAttribute{
-				Description: "The body of the GET Call.",
-				ElementType: types.StringType,
-				Optional:    true,
 			},
 		},
 	}
@@ -96,9 +96,9 @@ func (d *RecordaDataSource) Read(ctx context.Context, req datasource.ReadRequest
 	apiRes, httpRes, err := d.client.DNSAPI.
 		RecordaAPI.
 		Get(ctx).
+		Filters(flex.ExpandFrameworkMapString(ctx, data.Filters, &resp.Diagnostics)).
 		ReturnAsObject(1).
 		ReturnFields2(readableAttributes).
-		Body(flex.ExpandFrameworkMapString(ctx, data.Body, &resp.Diagnostics)).
 		Execute()
 	if err != nil {
 		if httpRes != nil && httpRes.StatusCode == http.StatusNotFound {

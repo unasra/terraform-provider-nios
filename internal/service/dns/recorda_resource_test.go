@@ -403,6 +403,7 @@ func TestAccRecordaResource_UseTtl(t *testing.T) {
 
 func testAccCheckRecordaExists(ctx context.Context, resourceName string, v *dns.RecordA) resource.TestCheckFunc {
 	// Verify the resource exists in the cloud
+	var readableAttributes = "aws_rte53_record_info,cloud_info,comment,creation_time,creator,ddns_principal,ddns_protected,disable,discovered_data,dns_name,extattrs,forbid_reclamation,ipv4addr,last_queried,ms_ad_user_data,name,reclaimable,shared_record_group,ttl,use_ttl,view,zone"
 	return func(state *terraform.State) error {
 		rs, ok := state.RootModule().Resources[resourceName]
 		if !ok {
@@ -411,6 +412,7 @@ func testAccCheckRecordaExists(ctx context.Context, resourceName string, v *dns.
 		apiRes, _, err := acctest.NIOSClient.DNSAPI.
 			RecordaAPI.
 			RecordaReferenceGet(ctx, rs.Primary.ID).
+			ReturnFields2(readableAttributes).
 			ReturnAsObject(1).
 			Execute()
 		if err != nil {
@@ -426,12 +428,13 @@ func testAccCheckRecordaExists(ctx context.Context, resourceName string, v *dns.
 
 func testAccCheckRecordaDestroy(ctx context.Context, v *dns.RecordA) resource.TestCheckFunc {
 	// Verify the resource was destroyed
+	var readableAttributes = "aws_rte53_record_info,cloud_info,comment,creation_time,creator,ddns_principal,ddns_protected,disable,discovered_data,dns_name,extattrs,forbid_reclamation,ipv4addr,last_queried,ms_ad_user_data,name,reclaimable,shared_record_group,ttl,use_ttl,view,zone"
 	return func(state *terraform.State) error {
 		_, httpRes, err := acctest.NIOSClient.DNSAPI.
 			RecordaAPI.
 			RecordaReferenceGet(ctx, utils.ExtractResourceRef(*v.Ref)).
 			ReturnAsObject(1).
-			ReturnFields2("").
+			ReturnFields2(readableAttributes).
 			Execute()
 		if err != nil {
 			if httpRes != nil && httpRes.StatusCode == http.StatusNotFound {

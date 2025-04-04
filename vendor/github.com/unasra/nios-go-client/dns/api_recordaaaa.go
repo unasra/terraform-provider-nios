@@ -275,70 +275,70 @@ func (a *RecordaaaaAPIService) GetExecute(r RecordaaaaAPIGetRequest) ([]RecordAA
 	localVarFormParams := url.Values{}
 
 	if r.returnFields != nil {
-		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_return_fields", r.returnFields, "")
+		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_return_fields", r.returnFields, "", "")
 	}
 	if r.returnFields2 != nil {
-		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_return_fields+", r.returnFields2, "")
+		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_return_fields+", r.returnFields2, "", "")
 	}
 	if r.maxResults != nil {
-		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_max_results", r.maxResults, "")
+		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_max_results", r.maxResults, "", "")
 	}
 	if r.returnAsObject != nil {
-		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_return_as_object", r.returnAsObject, "")
+		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_return_as_object", r.returnAsObject, "", "")
 	} else {
 		var defaultValue int32 = 0
 		r.returnAsObject = &defaultValue
 	}
 	if r.paging != nil {
-		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_paging", r.paging, "")
+		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_paging", r.paging, "", "")
 	} else {
 		var defaultValue int32 = 0
 		r.paging = &defaultValue
 	}
 	if r.pageId != nil {
-		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_page_id", r.pageId, "")
+		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_page_id", r.pageId, "", "")
 	}
 	if r.proxySearch != nil {
-		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_proxy_search", r.proxySearch, "")
+		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_proxy_search", r.proxySearch, "", "")
 	}
 	if r.schema != nil {
-		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_schema", r.schema, "")
+		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_schema", r.schema, "", "")
 	}
 	if r.schemaVersion != nil {
-		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_schema_version", r.schemaVersion, "")
+		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_schema_version", r.schemaVersion, "", "")
 	}
 	if r.getDoc != nil {
-		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_get_doc", r.getDoc, "")
+		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_get_doc", r.getDoc, "", "")
 	}
 	if r.schemaSearchable != nil {
-		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_schema_searchable", r.schemaSearchable, "")
+		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_schema_searchable", r.schemaSearchable, "", "")
 	}
 	if r.inheritance != nil {
-		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_inheritance", r.inheritance, "")
+		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_inheritance", r.inheritance, "", "")
 	}
 	if r.comment != nil {
-		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "comment", r.comment, "")
+		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "comment", r.comment, "form", "")
 	}
 	if r.creator != nil {
-		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "creator", r.creator, "")
+		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "creator", r.creator, "form", "")
 	}
 	if r.ddnsPrincipal != nil {
-		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "ddns_principal", r.ddnsPrincipal, "")
+		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "ddns_principal", r.ddnsPrincipal, "form", "")
 	}
 	if r.ipv4addr != nil {
-		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "ipv4addr", r.ipv4addr, "")
+		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "ipv4addr", r.ipv4addr, "form", "")
 	}
 	if r.name != nil {
-		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "name", r.name, "")
+		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "name", r.name, "form", "")
 	}
 	if r.reclaimable != nil {
-		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "reclaimable", r.reclaimable, "")
+		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "reclaimable", r.reclaimable, "form", "")
 	}
 	if r.view != nil {
-		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "view", r.view, "")
+		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "view", r.view, "form", "")
 	}
 	if r.zone != nil {
-		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "zone", r.zone, "")
+		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "zone", r.zone, "form", "")
 	}
 	// to determine the Content-Type header
 	localVarHTTPContentTypes := []string{}
@@ -449,7 +449,7 @@ func (a *RecordaaaaAPIService) PostExecute(r RecordaaaaAPIPostRequest) (string, 
 	}
 
 	if r.returnFields != nil {
-		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_return_fields", r.returnFields, "")
+		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_return_fields", r.returnFields, "", "")
 	}
 	// to determine the Content-Type header
 	localVarHTTPContentTypes := []string{"application/json"}
@@ -667,13 +667,13 @@ func (a *RecordaaaaAPIService) RecordaaaaReferenceGetExecute(r RecordaaaaAPIReco
 	localVarFormParams := url.Values{}
 
 	if r.returnFields != nil {
-		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_return_fields", r.returnFields, "")
+		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_return_fields", r.returnFields, "", "")
 	}
 	if r.returnFields2 != nil {
-		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_return_fields+", r.returnFields2, "")
+		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_return_fields+", r.returnFields2, "", "")
 	}
 	if r.returnAsObject != nil {
-		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_return_as_object", r.returnAsObject, "")
+		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_return_as_object", r.returnAsObject, "", "")
 	} else {
 		var defaultValue int32 = 0
 		r.returnAsObject = &defaultValue
@@ -793,7 +793,7 @@ func (a *RecordaaaaAPIService) RecordaaaaReferencePutExecute(r RecordaaaaAPIReco
 	}
 
 	if r.returnFields != nil {
-		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_return_fields", r.returnFields, "")
+		internal.ParameterAddToHeaderOrQuery(localVarQueryParams, "_return_fields", r.returnFields, "", "")
 	}
 	// to determine the Content-Type header
 	localVarHTTPContentTypes := []string{"application/json"}

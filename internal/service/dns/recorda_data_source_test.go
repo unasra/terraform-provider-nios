@@ -86,7 +86,7 @@ resource "nios_dns_a_record" "test" {
 }
 
 data "nios_dns_a_records" "test" {
-	body = {
+	filters = {
 		"name": nios_dns_a_record.test.name
 	}
 }
@@ -107,7 +107,7 @@ resource "nios_dns_a_record" "test" {
 }
 
 data "nios_dns_a_records" "test" {
-	body = {
+	filters = {
 		"*Site" = nios_dns_a_record.test.extattrs.Site.value
 	}
 }

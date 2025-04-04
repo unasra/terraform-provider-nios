@@ -218,7 +218,7 @@ func (m *RecordAModel) Expand(ctx context.Context, diags *diag.Diagnostics, isCr
 		DdnsPrincipal:       flex.ExpandStringPointer(m.DdnsPrincipal),
 		DdnsProtected:       flex.ExpandBoolPointer(m.DdnsProtected),
 		Disable:             flex.ExpandBoolPointer(m.Disable),
-		Extattrs:            flex.ExpandFrameworkMapString(ctx, m.Extattrs, diags),
+		Extattrs:            flex.ExpandFrameworkMapOfMapString(ctx, m.Extattrs, diags),
 		ForbidReclamation:   flex.ExpandBoolPointer(m.ForbidReclamation),
 		Ipv4addr:            flex.ExpandString(m.Ipv4addr),
 		Name:                flex.ExpandString(m.Name),

@@ -189,7 +189,7 @@ func extractResourceId(id string) string {
 
 // ParameterAddToHeaderOrQuery adds the provided object to the request header or url query
 // supporting deep object syntax
-func ParameterAddToHeaderOrQuery(headerOrQueryParams interface{}, keyPrefix string, obj interface{}, collectionType string) {
+func ParameterAddToHeaderOrQuery(headerOrQueryParams interface{}, keyPrefix string, obj interface{}, style string, collectionType string) {
 	var v = reflect.ValueOf(obj)
 	var value = ""
 	if v == reflect.ValueOf(nil) {
@@ -205,11 +205,11 @@ func ParameterAddToHeaderOrQuery(headerOrQueryParams interface{}, keyPrefix stri
 				if err != nil {
 					return
 				}
-				ParameterAddToHeaderOrQuery(headerOrQueryParams, keyPrefix, dataMap, collectionType)
+				ParameterAddToHeaderOrQuery(headerOrQueryParams, keyPrefix, dataMap, style, collectionType)
 				return
 			}
 			if t, ok := obj.(time.Time); ok {
-				ParameterAddToHeaderOrQuery(headerOrQueryParams, keyPrefix, t.Format(time.RFC3339), collectionType)
+				ParameterAddToHeaderOrQuery(headerOrQueryParams, keyPrefix, t.Format(time.RFC3339Nano), style, collectionType)
 				return
 			}
 			value = v.Type().String() + " value"
@@ -221,7 +221,11 @@ func ParameterAddToHeaderOrQuery(headerOrQueryParams interface{}, keyPrefix stri
 			var lenIndValue = indValue.Len()
 			for i := 0; i < lenIndValue; i++ {
 				var arrayValue = indValue.Index(i)
-				ParameterAddToHeaderOrQuery(headerOrQueryParams, keyPrefix, arrayValue.Interface(), collectionType)
+				var keyPrefixForCollectionType = keyPrefix
+				if style == "deepObject" {
+					keyPrefixForCollectionType = keyPrefix + "[" + strconv.Itoa(i) + "]"
+				}
+				ParameterAddToHeaderOrQuery(headerOrQueryParams, keyPrefixForCollectionType, arrayValue.Interface(), style, collectionType)
 			}
 			return
 
@@ -233,14 +237,18 @@ func ParameterAddToHeaderOrQuery(headerOrQueryParams interface{}, keyPrefix stri
 			iter := indValue.MapRange()
 			for iter.Next() {
 				k, v := iter.Key(), iter.Value()
-				ParameterAddToHeaderOrQuery(headerOrQueryParams, fmt.Sprintf("%s[%s]", keyPrefix, k.String()), v.Interface(), collectionType)
+				if style == "form" {
+					ParameterAddToHeaderOrQuery(headerOrQueryParams, fmt.Sprintf("%s", k.String()), v.Interface(), style, collectionType)
+				} else {
+					ParameterAddToHeaderOrQuery(headerOrQueryParams, fmt.Sprintf("%s[%s]", keyPrefix, k.String()), v.Interface(), style, collectionType)
+				}
 			}
 			return
 
 		case reflect.Interface:
 			fallthrough
 		case reflect.Ptr:
-			ParameterAddToHeaderOrQuery(headerOrQueryParams, keyPrefix, v.Elem().Interface(), collectionType)
+			ParameterAddToHeaderOrQuery(headerOrQueryParams, keyPrefix, v.Elem().Interface(), style, collectionType)
 			return
 
 		case reflect.Int, reflect.Int8, reflect.Int16,
