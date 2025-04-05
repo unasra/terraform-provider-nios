@@ -23,7 +23,6 @@ import (
 
 type RecordAModel struct {
 	Ref                 types.String `tfsdk:"ref"`
-	Id                  types.String `tfsdk:"id"`
 	AwsRte53RecordInfo  types.String `tfsdk:"aws_rte53_record_info"`
 	CloudInfo           types.String `tfsdk:"cloud_info"`
 	Comment             types.String `tfsdk:"comment"`
@@ -51,7 +50,6 @@ type RecordAModel struct {
 
 var RecordAAttrTypes = map[string]attr.Type{
 	"ref":                   types.StringType,
-	"id":                    types.StringType,
 	"aws_rte53_record_info": types.StringType,
 	"cloud_info":            types.StringType,
 	"comment":               types.StringType,
@@ -78,12 +76,6 @@ var RecordAAttrTypes = map[string]attr.Type{
 }
 
 var RecordAResourceSchemaAttributes = map[string]schema.Attribute{
-	"id": schema.StringAttribute{
-		Computed: true,
-		PlanModifiers: []planmodifier.String{
-			stringplanmodifier.UseStateForUnknown(),
-		},
-	},
 	"ref": schema.StringAttribute{
 		Computed: true,
 		PlanModifiers: []planmodifier.String{
@@ -225,7 +217,6 @@ func (m *RecordAModel) Expand(ctx context.Context, diags *diag.Diagnostics, isCr
 		RemoveAssociatedPtr: flex.ExpandBoolPointer(m.RemoveAssociatedPtr),
 		Ttl:                 flex.ExpandInt32Pointer(m.Ttl),
 		UseTtl:              flex.ExpandBoolPointer(m.UseTtl),
-		View:                flex.ExpandStringPointer(m.View),
 	}
 	if isCreate {
 		to.View = flex.ExpandStringPointer(m.View)
@@ -251,7 +242,6 @@ func (m *RecordAModel) Flatten(ctx context.Context, from *dns.RecordA, diags *di
 	if m == nil {
 		*m = RecordAModel{}
 	}
-	//m.Id = flex.FlattenStringPointer(from.Ref)
 	m.Ref = flex.FlattenStringPointer(from.Ref)
 	m.AwsRte53RecordInfo = flex.FlattenStringPointer(from.AwsRte53RecordInfo)
 	m.CloudInfo = flex.FlattenStringPointer(from.CloudInfo)

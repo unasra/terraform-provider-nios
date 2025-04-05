@@ -409,9 +409,11 @@ func testAccCheckRecordaExists(ctx context.Context, resourceName string, v *dns.
 		if !ok {
 			return fmt.Errorf("not found: %s", resourceName)
 		}
+		//rs.Primary.ID = utils.ExtractResourceRef(rs.Primary.Attributes["ref"])
+		state.RootModule().Resources[resourceName].Primary.ID = utils.ExtractResourceRef(rs.Primary.Attributes["ref"])
 		apiRes, _, err := acctest.NIOSClient.DNSAPI.
 			RecordaAPI.
-			RecordaReferenceGet(ctx, rs.Primary.ID).
+			RecordaReferenceGet(ctx, utils.ExtractResourceRef(rs.Primary.Attributes["ref"])).
 			ReturnFields2(readableAttributes).
 			ReturnAsObject(1).
 			Execute()

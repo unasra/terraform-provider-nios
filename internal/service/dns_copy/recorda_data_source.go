@@ -98,7 +98,6 @@ func (d *RecordaDataSource) Read(ctx context.Context, req datasource.ReadRequest
 		Get(ctx).
 		ReturnAsObject(1).
 		ReturnFields2(readableAttributes).
-		Body(flex.ExpandFrameworkMapString(ctx, data.Body, &resp.Diagnostics)).
 		Execute()
 	if err != nil {
 		if httpRes != nil && httpRes.StatusCode == http.StatusNotFound {

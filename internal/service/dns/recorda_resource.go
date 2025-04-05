@@ -6,7 +6,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/unasra/terraform-provider-nios/internal/utils"
 	"net/http"
 
@@ -84,8 +83,6 @@ func (r *RecordaResource) Create(ctx context.Context, req resource.CreateRequest
 		httpres = nil
 	}
 	res := apiRes.GetResult()
-	data.Ref = types.StringPointerValue(res.Ref)
-	data.Id = types.StringValue(utils.ExtractResourceRef(data.Ref.ValueString()))
 
 	// Save data into Terraform state
 	data.Flatten(ctx, &res, &resp.Diagnostics)
@@ -105,7 +102,7 @@ func (r *RecordaResource) Read(ctx context.Context, req resource.ReadRequest, re
 
 	apiRes, httpRes, err := r.client.DNSAPI.
 		RecordaAPI.
-		RecordaReferenceGet(ctx, data.Id.ValueString()).
+		RecordaReferenceGet(ctx, utils.ExtractResourceRef(data.Ref.ValueString())).
 		//ReturnFields("ref,aws_rte53_record_info,cloud_info, comment, creation_time, creator, ddns_principal, ddns_protected, disable, discovered_data, dns_name, extattrs, forbid_reclamation, ipv4addr, last_queried, ms_ad_user_data, name, reclaimable, remove_associated_ptr, shared_record_group, ttl, use_ttl, view, zone").
 		ReturnFields2(readableAttributes).
 		ReturnAsObject(1).
@@ -121,9 +118,6 @@ func (r *RecordaResource) Read(ctx context.Context, req resource.ReadRequest, re
 
 	res := apiRes.GetResult()
 	data.Flatten(ctx, &res, &resp.Diagnostics)
-
-	//data.Ref = types.StringPointerValue(apiRes.GetResult().Ref)
-	//data.Id = types.StringValue(utils.ExtractResourceRef(data.Ref.ValueString()))
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -141,7 +135,7 @@ func (r *RecordaResource) Update(ctx context.Context, req resource.UpdateRequest
 
 	apiRes, _, err := r.client.DNSAPI.
 		RecordaAPI.
-		RecordaReferencePut(ctx, data.Id.ValueString()).
+		RecordaReferencePut(ctx, utils.ExtractResourceRef(data.Ref.ValueString())).
 		RecordA(*data.Expand(ctx, &resp.Diagnostics, false)).
 		ReturnFields2(readableAttributes).
 		ReturnAsObject(1).
@@ -150,9 +144,6 @@ func (r *RecordaResource) Update(ctx context.Context, req resource.UpdateRequest
 		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to update Recorda, got error: %s", err))
 		return
 	}
-
-	//data.Ref = types.StringValue(apiRes)
-	//data.Id = types.StringValue(utils.ExtractResourceRef(data.Ref.ValueString()))
 
 	res := apiRes.GetResult()
 	data.Flatten(ctx, &res, &resp.Diagnostics)
@@ -173,7 +164,7 @@ func (r *RecordaResource) Delete(ctx context.Context, req resource.DeleteRequest
 
 	httpRes, err := r.client.DNSAPI.
 		RecordaAPI.
-		RecordaReferenceDelete(ctx, data.Id.ValueString()).
+		RecordaReferenceDelete(ctx, utils.ExtractResourceRef(data.Ref.ValueString())).
 		Execute()
 	if err != nil {
 		if httpRes != nil && httpRes.StatusCode == http.StatusNotFound {
@@ -185,5 +176,5 @@ func (r *RecordaResource) Delete(ctx context.Context, req resource.DeleteRequest
 }
 
 func (r *RecordaResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+	resource.ImportStatePassthroughID(ctx, path.Root("ref"), req, resp)
 }
