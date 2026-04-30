@@ -10,18 +10,17 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	schema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/infobloxopen/infoblox-nios-go-client/dhcp"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/defaults"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/infobloxopen/terraform-provider-nios/internal/flex"
-	"github.com/infobloxopen/terraform-provider-nios/internal/utils"
 	refmod "github.com/infobloxopen/terraform-provider-nios/internal/planmodifiers/ref"
+	"github.com/infobloxopen/terraform-provider-nios/internal/utils"
 )
 
 type Ipv6dhcpoptiondefinitionModel struct {
@@ -42,7 +41,7 @@ var Ipv6dhcpoptiondefinitionAttrTypes = map[string]attr.Type{
 
 var Ipv6dhcpoptiondefinitionResourceSchemaAttributes = map[string]schema.Attribute{
 	"ref": schema.StringAttribute{
-		Computed:            true,
+		Computed: true,
 		PlanModifiers: []planmodifier.String{
 			refmod.UseStateUnlessResourceChanges(),
 		},
