@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -13,6 +14,7 @@ import (
 
 	niosclient "github.com/infobloxopen/infoblox-nios-go-client/client"
 
+	"github.com/infobloxopen/terraform-provider-nios/internal/config"
 	"github.com/infobloxopen/terraform-provider-nios/internal/utils"
 )
 
@@ -107,6 +109,7 @@ func (r *Ipv6dhcpoptiondefinitionResource) Read(ctx context.Context, req resourc
 		Read(ctx, utils.ExtractResourceRef(data.Ref.ValueString())).
 		ReturnFieldsPlus(readableAttributesForIpv6dhcpoptiondefinition).
 		ReturnAsObject(1).
+		ProxySearch(config.GetProxySearch()).
 		Execute()
 
 		// Handle not found case
@@ -195,6 +198,49 @@ func (r *Ipv6dhcpoptiondefinitionResource) Delete(ctx context.Context, req resou
 		}
 		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to delete Ipv6dhcpoptiondefinition, got error: %s", err))
 		return
+	}
+}
+
+func (r *Ipv6dhcpoptiondefinitionResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+
+	var data Ipv6dhcpoptiondefinitionModel
+	// Read Terraform prior state data into the model.
+	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// For Configuration object, any attributes not defined by the user appear as null, unless derived from another instance.
+	// We perform IsUnknown() check to handle variables from .tfvars that are resolved
+	// during the plan phase rather than validation phase, preventing false validation errors.
+
+	var space string
+	if !data.Space.IsUnknown() {
+		space = "DHCPv6"
+		if !data.Space.IsNull() {
+			space = data.Space.ValueString()
+		}
+	}
+
+	if !data.Name.IsNull() && !data.Name.IsUnknown() {
+		name := data.Name.ValueString()
+		// If space defaults to "DHCPv6", then name should start with "dhcp6."
+		if space == "DHCPv6" {
+			if !strings.HasPrefix(name, "dhcp6.") {
+				resp.Diagnostics.AddError(
+					"Invalid Name for DHCPv6 Option Definition",
+					"The name of a DHCP IPv6 option definition object in the default space (DHCPv6) must start with 'dhcp6.'.",
+				)
+			}
+		} else {
+			// If space is custom, then name should not start with "dhcp6."
+			if strings.HasPrefix(name, "dhcp6.") {
+				resp.Diagnostics.AddError(
+					"Invalid Name for Custom DHCPv6 Option Definition",
+					"The name of a DHCP IPv6 option definition object in a custom space must not start with 'dhcp6.'.",
+				)
+			}
+		}
 	}
 }
 

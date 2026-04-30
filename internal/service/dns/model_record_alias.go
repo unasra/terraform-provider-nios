@@ -166,11 +166,14 @@ var RecordAliasResourceSchemaAttributes = map[string]schema.Attribute{
 		Required:            true,
 		MarkdownDescription: "The Name of the Alias record.",
 		Validators: []validator.String{
-			customvalidator.IsValidFQDN(),
+			customvalidator.IsValidDomainName(),
 		},
 	},
 	"target_name": schema.StringAttribute{
-		Required:            true,
+		Required: true,
+		Validators: []validator.String{
+			customvalidator.NotEqualsField(path.MatchRoot("name")),
+		},
 		MarkdownDescription: "Target name in FQDN format. This value can be in unicode format.",
 	},
 	"target_type": schema.StringAttribute{

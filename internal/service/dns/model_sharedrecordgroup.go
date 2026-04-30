@@ -21,6 +21,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
+
 	"github.com/infobloxopen/infoblox-nios-go-client/dns"
 	"github.com/infobloxopen/terraform-provider-nios/internal/flex"
 	importmod "github.com/infobloxopen/terraform-provider-nios/internal/planmodifiers/import"
@@ -120,6 +122,7 @@ var SharedrecordgroupResourceSchemaAttributes = map[string]schema.Attribute{
 			listvalidator.SizeAtLeast(1),
 		},
 		Optional:            true,
+		Computed:            true,
 		MarkdownDescription: "The list of zones associated with this shared record group. Starting from NIOS-9.0.6, this field has been updated to a structure that includes FQDN and DNS view details.",
 	},
 }
@@ -164,7 +167,14 @@ func (m *SharedrecordgroupModel) Flatten(ctx context.Context, from *dns.Sharedre
 	m.Name = flex.FlattenStringPointer(from.Name)
 	m.RecordNamePolicy = flex.FlattenStringPointer(from.RecordNamePolicy)
 	m.UseRecordNamePolicy = types.BoolPointerValue(from.UseRecordNamePolicy)
+	planZoneAssociations := m.ZoneAssociations
 	m.ZoneAssociations = flex.FlattenFrameworkListNestedBlock(ctx, from.ZoneAssociations, SharedrecordgroupZoneAssociationsAttrTypes, diags, FlattenSharedrecordgroupZoneAssociations)
+	if !planZoneAssociations.IsUnknown() {
+		reOrderedZoneAssociations, diags := utils.ReorderAndFilterNestedListResponse(ctx, planZoneAssociations, m.ZoneAssociations, "fqdn")
+		if !diags.HasError() {
+			m.ZoneAssociations = reOrderedZoneAssociations.(basetypes.ListValue)
+		}
+	}
 }
 
 func (m *SharedrecordgroupModel) PutExpand(to *dns.Sharedrecordgroup) *dns.Sharedrecordgroup {

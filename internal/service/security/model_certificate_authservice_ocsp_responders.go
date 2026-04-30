@@ -5,7 +5,6 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	schema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -50,10 +49,7 @@ var CertificateAuthserviceOcspRespondersResourceSchemaAttributes = map[string]sc
 		Required: true,
 		Validators: []validator.String{
 			customvalidator.ValidateTrimmedString(),
-			stringvalidator.Any(
-				customvalidator.IsValidFQDN(),
-				customvalidator.IsValidIPCIDR(),
-			),
+			customvalidator.IsValidDomainName(),
 		},
 		MarkdownDescription: "The FQDN (Fully Qualified Domain Name) or IP address of the server.",
 	},

@@ -4,16 +4,20 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/infobloxopen/terraform-provider-nios/internal/service/rir"
 
 	niosclient "github.com/infobloxopen/infoblox-nios-go-client/client"
 	gridclient "github.com/infobloxopen/infoblox-nios-go-client/grid"
 	"github.com/infobloxopen/infoblox-nios-go-client/option"
 
+	"github.com/infobloxopen/terraform-provider-nios/internal/config"
 	"github.com/infobloxopen/terraform-provider-nios/internal/service/acl"
 	"github.com/infobloxopen/terraform-provider-nios/internal/service/cloud"
 	"github.com/infobloxopen/terraform-provider-nios/internal/service/dhcp"
@@ -22,8 +26,11 @@ import (
 	"github.com/infobloxopen/terraform-provider-nios/internal/service/dtc"
 	"github.com/infobloxopen/terraform-provider-nios/internal/service/grid"
 	"github.com/infobloxopen/terraform-provider-nios/internal/service/ipam"
+	"github.com/infobloxopen/terraform-provider-nios/internal/service/microsoft"
 	"github.com/infobloxopen/terraform-provider-nios/internal/service/misc"
 	"github.com/infobloxopen/terraform-provider-nios/internal/service/notification"
+	"github.com/infobloxopen/terraform-provider-nios/internal/service/parentalcontrol"
+	"github.com/infobloxopen/terraform-provider-nios/internal/service/rpz"
 	"github.com/infobloxopen/terraform-provider-nios/internal/service/security"
 	"github.com/infobloxopen/terraform-provider-nios/internal/service/smartfolder"
 )
@@ -44,6 +51,8 @@ type NIOSProviderModel struct {
 	NIOSHostURL  types.String `tfsdk:"nios_host_url"`
 	NIOSUsername types.String `tfsdk:"nios_username"`
 	NIOSPassword types.String `tfsdk:"nios_password"`
+	ProxyURL     types.String `tfsdk:"proxy_url"`
+	ProxySearch  types.String `tfsdk:"proxy_search"`
 }
 
 func (p *NIOSProvider) Metadata(_ context.Context, _ provider.MetadataRequest, resp *provider.MetadataResponse) {
@@ -64,6 +73,17 @@ func (p *NIOSProvider) Schema(_ context.Context, _ provider.SchemaRequest, resp 
 			"nios_password": schema.StringAttribute{
 				Optional: true,
 			},
+			"proxy_url": schema.StringAttribute{
+				Description: "Proxy URL to connect to Infoblox NIOS.",
+				Optional:    true,
+			},
+			"proxy_search": schema.StringAttribute{
+				Optional:    true,
+				Description: "Proxy search mode. Allowed values: LOCAL (default), GM.",
+				Validators: []validator.String{
+					stringvalidator.OneOf("LOCAL", "GM"),
+				},
+			},
 		},
 	}
 }
@@ -83,7 +103,11 @@ func (p *NIOSProvider) Configure(ctx context.Context, req provider.ConfigureRequ
 		option.WithNIOSPassword(data.NIOSPassword.ValueString()),
 		option.WithNIOSHostUrl(data.NIOSHostURL.ValueString()),
 		option.WithDebug(true),
+		option.WithProxyURL(data.ProxyURL.ValueString()),
 	)
+
+	// Set ProxySearch configuration
+	config.SetProxySearch(data.ProxySearch.ValueString())
 
 	err := checkAndCreatePreRequisites(ctx, client)
 	if err != nil {
@@ -128,6 +152,11 @@ func (p *NIOSProvider) Resources(_ context.Context) []func() resource.Resource {
 		dns.NewIPAssociationResource,
 		dns.NewSharedrecordgroupResource,
 		dns.NewSharedrecordTxtResource,
+		dns.NewSharedrecordMxResource,
+		dns.NewSharedrecordSrvResource,
+		dns.NewSharedrecordAResource,
+		dns.NewSharedrecordCnameResource,
+		dns.NewSharedrecordAaaaResource,
 
 		dhcp.NewFixedaddressResource,
 		dhcp.NewSharednetworkResource,
@@ -137,17 +166,51 @@ func (p *NIOSProvider) Resources(_ context.Context) []func() resource.Resource {
 		dhcp.NewIpv6dhcpoptionspaceResource,
 		dhcp.NewIpv6dhcpoptiondefinitionResource,
 		dhcp.NewIpv6fixedaddresstemplateResource,
+		dhcp.NewDhcpoptionspaceResource,
+		dhcp.NewDhcpoptiondefinitionResource,
+		dhcp.NewFixedaddresstemplateResource,
+		dhcp.NewIpv6sharednetworkResource,
+		dhcp.NewIpv6rangeResource,
+		dhcp.NewFiltermacResource,
+		dhcp.NewDhcpfailoverResource,
+		dhcp.NewMacfilteraddressResource,
+		dhcp.NewFilternacResource,
+		dhcp.NewRoaminghostResource,
+		dhcp.NewFingerprintResource,
+		dhcp.NewFilterfingerprintResource,
+		dhcp.NewIpv6fixedaddressResource,
+		dhcp.NewIpv6filteroptionResource,
+		dhcp.NewFilterrelayagentResource,
+		dhcp.NewFilteroptionResource,
 
 		dtc.NewDtcLbdnResource,
 		dtc.NewDtcServerResource,
 		dtc.NewDtcPoolResource,
+		dtc.NewDtcTopologyResource,
+		dtc.NewDtcMonitorSnmpResource,
+		dtc.NewDtcMonitorHttpResource,
+		dtc.NewDtcMonitorTcpResource,
+		dtc.NewDtcMonitorPdpResource,
+		dtc.NewDtcMonitorIcmpResource,
+		dtc.NewDtcMonitorSipResource,
+		dtc.NewDtcRecordAResource,
+		dtc.NewDtcRecordSrvResource,
+		dtc.NewDtcRecordNaptrResource,
+		dtc.NewDtcRecordCnameResource,
+		dtc.NewDtcRecordAaaaResource,
 
 		ipam.NewNetworkResource,
+		ipam.NewNetworktemplateResource,
 		ipam.NewNetworkcontainerResource,
 		ipam.NewIpv6networkcontainerResource,
 		ipam.NewIpv6networkResource,
 		ipam.NewNetworkviewResource,
 		ipam.NewBulkhostnametemplateResource,
+		ipam.NewVlanviewResource,
+		ipam.NewVlanResource,
+		ipam.NewVlanrangeResource,
+		ipam.NewSuperhostResource,
+		ipam.NewIpv6networktemplateResource,
 
 		cloud.NewAwsrte53taskgroupResource,
 		cloud.NewAwsuserResource,
@@ -159,9 +222,16 @@ func (p *NIOSProvider) Resources(_ context.Context) []func() resource.Resource {
 		security.NewFtpuserResource,
 		security.NewSnmpuserResource,
 		security.NewCertificateAuthserviceResource,
+		security.NewSamlAuthserviceResource,
+		security.NewLdapAuthServiceResource,
+		security.NewTacacsplusAuthserviceResource,
+		security.NewRadiusAuthserviceResource,
 
 		misc.NewRulesetResource,
 		misc.NewBfdtemplateResource,
+		misc.NewDxlEndpointResource,
+		misc.NewTftpfiledirResource,
+		misc.NewSyslogEndpointResource,
 
 		smartfolder.NewSmartfolderPersonalResource,
 		smartfolder.NewSmartfolderGlobalResource,
@@ -173,12 +243,40 @@ func (p *NIOSProvider) Resources(_ context.Context) []func() resource.Resource {
 		grid.NewUpgradegroupResource,
 		grid.NewGridServicerestartGroupResource,
 		grid.NewDistributionscheduleResource,
+		grid.NewMemberResource,
+		grid.NewUpgradescheduleResource,
 
 		discovery.NewDiscoveryCredentialgroupResource,
 		discovery.NewVdiscoverytaskResource,
 
 		notification.NewNotificationRuleResource,
 		notification.NewNotificationRestEndpointResource,
+
+		rpz.NewRecordRpzAResource,
+		rpz.NewRecordRpzNaptrResource,
+		rpz.NewRecordRpzPtrResource,
+		rpz.NewRecordRpzMxResource,
+		rpz.NewRecordRpzSrvResource,
+		rpz.NewRecordRpzCnameResource,
+		rpz.NewRecordRpzAaaaResource,
+		rpz.NewRecordRpzTxtResource,
+		rpz.NewRecordRpzCnameIpaddressResource,
+		rpz.NewRecordRpzAIpaddressResource,
+		rpz.NewRecordRpzAaaaIpaddressResource,
+		rpz.NewRecordRpzCnameClientipaddressResource,
+		rpz.NewRecordRpzCnameIpaddressdnResource,
+		rpz.NewRecordRpzCnameClientipaddressdnResource,
+
+		rir.NewRirOrganizationResource,
+
+		parentalcontrol.NewParentalcontrolAvpResource,
+		parentalcontrol.NewParentalcontrolBlockingpolicyResource,
+		parentalcontrol.NewParentalcontrolSubscribersiteResource,
+		parentalcontrol.NewParentalcontrolSubscriberrecordResource,
+
+		microsoft.NewMsserverResource,
+		microsoft.NewMsserverAdsitesSiteResource,
+		microsoft.NewMssuperscopeResource,
 	}
 }
 
@@ -213,6 +311,11 @@ func (p *NIOSProvider) DataSources(ctx context.Context) []func() datasource.Data
 		dns.NewRecordHostDataSource,
 		dns.NewSharedrecordgroupDataSource,
 		dns.NewSharedrecordTxtDataSource,
+		dns.NewSharedrecordMxDataSource,
+		dns.NewSharedrecordSrvDataSource,
+		dns.NewSharedrecordADataSource,
+		dns.NewSharedrecordCnameDataSource,
+		dns.NewSharedrecordAaaaDataSource,
 
 		dhcp.NewFixedaddressDataSource,
 		dhcp.NewSharednetworkDataSource,
@@ -222,17 +325,52 @@ func (p *NIOSProvider) DataSources(ctx context.Context) []func() datasource.Data
 		dhcp.NewIpv6dhcpoptionspaceDataSource,
 		dhcp.NewIpv6dhcpoptiondefinitionDataSource,
 		dhcp.NewIpv6fixedaddresstemplateDataSource,
+		dhcp.NewDhcpoptionspaceDataSource,
+		dhcp.NewDhcpoptiondefinitionDataSource,
+		dhcp.NewFixedaddresstemplateDataSource,
+		dhcp.NewIpv6sharednetworkDataSource,
+		dhcp.NewIpv6rangeDataSource,
+		dhcp.NewFiltermacDataSource,
+		dhcp.NewDhcpfailoverDataSource,
+		dhcp.NewMacfilteraddressDataSource,
+		dhcp.NewFilternacDataSource,
+		dhcp.NewRoaminghostDataSource,
+		dhcp.NewFingerprintDataSource,
+		dhcp.NewFilterfingerprintDataSource,
+		dhcp.NewIpv6fixedaddressDataSource,
+		dhcp.NewIpv6filteroptionDataSource,
+		dhcp.NewFilterrelayagentDataSource,
+		dhcp.NewFilteroptionDataSource,
 
 		dtc.NewDtcLbdnDataSource,
 		dtc.NewDtcServerDataSource,
 		dtc.NewDtcPoolDataSource,
+		dtc.NewDtcTopologyRuleDataSource,
+		dtc.NewDtcTopologyDataSource,
+		dtc.NewDtcMonitorSnmpDataSource,
+		dtc.NewDtcMonitorHttpDataSource,
+		dtc.NewDtcMonitorTcpDataSource,
+		dtc.NewDtcMonitorPdpDataSource,
+		dtc.NewDtcMonitorIcmpDataSource,
+		dtc.NewDtcMonitorSipDataSource,
+		dtc.NewDtcRecordADataSource,
+		dtc.NewDtcRecordSrvDataSource,
+		dtc.NewDtcRecordNaptrDataSource,
+		dtc.NewDtcRecordCnameDataSource,
+		dtc.NewDtcRecordAaaaDataSource,
 
 		ipam.NewNetworkDataSource,
+		ipam.NewNetworktemplateDataSource,
 		ipam.NewNetworkcontainerDataSource,
 		ipam.NewIpv6networkcontainerDataSource,
 		ipam.NewIpv6networkDataSource,
 		ipam.NewNetworkviewDataSource,
 		ipam.NewBulkhostnametemplateDataSource,
+		ipam.NewVlanviewDataSource,
+		ipam.NewVlanDataSource,
+		ipam.NewVlanrangeDataSource,
+		ipam.NewSuperhostDataSource,
+		ipam.NewIpv6networktemplateDataSource,
 
 		cloud.NewAwsrte53taskgroupDataSource,
 		cloud.NewAwsuserDataSource,
@@ -244,9 +382,16 @@ func (p *NIOSProvider) DataSources(ctx context.Context) []func() datasource.Data
 		security.NewPermissionDataSource,
 		security.NewSnmpuserDataSource,
 		security.NewCertificateAuthserviceDataSource,
+		security.NewSamlAuthserviceDataSource,
+		security.NewLdapAuthServiceDataSource,
+		security.NewTacacsplusAuthserviceDataSource,
+		security.NewRadiusAuthserviceDataSource,
 
 		misc.NewRulesetDataSource,
 		misc.NewBfdtemplateDataSource,
+		misc.NewDxlEndpointDataSource,
+		misc.NewTftpfiledirDataSource,
+		misc.NewSyslogEndpointDataSource,
 
 		smartfolder.NewSmartfolderPersonalDataSource,
 		smartfolder.NewSmartfolderGlobalDataSource,
@@ -258,13 +403,40 @@ func (p *NIOSProvider) DataSources(ctx context.Context) []func() datasource.Data
 		grid.NewUpgradegroupDataSource,
 		grid.NewGridServicerestartGroupDataSource,
 		grid.NewDistributionscheduleDataSource,
+		grid.NewMemberDataSource,
+		grid.NewUpgradescheduleDataSource,
 
 		discovery.NewDiscoveryCredentialgroupDataSource,
 		discovery.NewVdiscoverytaskDataSource,
 
 		notification.NewNotificationRuleDataSource,
-
 		notification.NewNotificationRestEndpointDataSource,
+
+		rpz.NewRecordRpzADataSource,
+		rpz.NewRecordRpzNaptrDataSource,
+		rpz.NewRecordRpzPtrDataSource,
+		rpz.NewRecordRpzMxDataSource,
+		rpz.NewRecordRpzSrvDataSource,
+		rpz.NewRecordRpzCnameDataSource,
+		rpz.NewRecordRpzAaaaDataSource,
+		rpz.NewRecordRpzTxtDataSource,
+		rpz.NewRecordRpzCnameIpaddressDataSource,
+		rpz.NewRecordRpzAIpaddressDataSource,
+		rpz.NewRecordRpzAaaaIpaddressDataSource,
+		rpz.NewRecordRpzCnameClientipaddressDataSource,
+		rpz.NewRecordRpzCnameIpaddressdnDataSource,
+		rpz.NewRecordRpzCnameClientipaddressdnDataSource,
+
+		rir.NewRirOrganizationDataSource,
+
+		parentalcontrol.NewParentalcontrolAvpDataSource,
+		parentalcontrol.NewParentalcontrolBlockingpolicyDataSource,
+		parentalcontrol.NewParentalcontrolSubscribersiteDataSource,
+		parentalcontrol.NewParentalcontrolSubscriberrecordDataSource,
+
+		microsoft.NewMsserverDataSource,
+		microsoft.NewMsserverAdsitesSiteDataSource,
+		microsoft.NewMssuperscopeDataSource,
 	}
 }
 

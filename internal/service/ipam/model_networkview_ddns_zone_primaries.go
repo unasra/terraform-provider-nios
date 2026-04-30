@@ -68,7 +68,7 @@ var NetworkviewDdnsZonePrimariesResourceSchemaAttributes = map[string]schema.Att
 			stringplanmodifier.UseStateForUnknown(),
 		},
 		Validators: []validator.String{
-			customvalidator.IsValidFQDN(),
+			customvalidator.IsValidDomainName(),
 		},
 		MarkdownDescription: "The name of external zone in FQDN format.",
 	},

@@ -236,7 +236,7 @@ var FixedaddressResourceSchemaAttributes = map[string]schema.Attribute{
 		},
 		Validators: []validator.String{
 			stringvalidator.AlsoRequires(path.MatchRoot("use_bootserver")),
-			customvalidator.IsValidFQDN(),
+			customvalidator.IsValidIPv4OrFQDN(),
 		},
 		MarkdownDescription: "The bootserver address for the fixed address. You can specify the name and/or IP address of the boot server that the host needs to boot. The boot server IPv4 Address or name in FQDN format.",
 	},
@@ -574,6 +574,7 @@ var FixedaddressResourceSchemaAttributes = map[string]schema.Attribute{
 		},
 		Validators: []validator.String{
 			stringvalidator.AlsoRequires(path.MatchRoot("use_nextserver")),
+			customvalidator.IsValidIPv4OrFQDN(),
 		},
 		MarkdownDescription: "The name in FQDN and/or IPv4 Address format of the next server that the host needs to boot.",
 	},
@@ -900,7 +901,9 @@ func (m *FixedaddressModel) Flatten(ctx context.Context, from *dhcp.Fixedaddress
 		}
 	}
 	m.SnmpCredential = FlattenFixedaddressSnmpCredential(ctx, from.SnmpCredential, diags)
-	m.Template = flex.FlattenStringPointer(from.Template)
+	if m.Template.IsUnknown() || m.Template.IsNull() {
+		m.Template = flex.FlattenStringPointer(from.Template)
+	}
 	m.UseBootfile = types.BoolPointerValue(from.UseBootfile)
 	m.UseBootserver = types.BoolPointerValue(from.UseBootserver)
 	m.UseCliCredentials = types.BoolPointerValue(from.UseCliCredentials)

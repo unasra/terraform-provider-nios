@@ -12,6 +12,7 @@ import (
 
 	niosclient "github.com/infobloxopen/infoblox-nios-go-client/client"
 
+	"github.com/infobloxopen/terraform-provider-nios/internal/config"
 	"github.com/infobloxopen/terraform-provider-nios/internal/utils"
 )
 
@@ -106,6 +107,7 @@ func (r *UpgradegroupResource) Read(ctx context.Context, req resource.ReadReques
 		Read(ctx, utils.ExtractResourceRef(data.Ref.ValueString())).
 		ReturnFieldsPlus(readableAttributesForUpgradegroup).
 		ReturnAsObject(1).
+		ProxySearch(config.GetProxySearch()).
 		Execute()
 
 	// Handle not found case
@@ -184,6 +186,34 @@ func (r *UpgradegroupResource) Delete(ctx context.Context, req resource.DeleteRe
 		}
 		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to delete Upgradegroup, got error: %s", err))
 		return
+	}
+}
+
+func (r *UpgradegroupResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	var data UpgradegroupModel
+
+	// Read Terraform plan data into the model
+	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
+
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	if !data.Members.IsNull() && !data.Members.IsUnknown() {
+		var members []UpgradegroupMembersModel
+		diags := data.Members.ElementsAs(ctx, &members, false)
+		resp.Diagnostics.Append(diags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		for i, member := range members {
+			if member.Member.IsNull() || member.Member.IsUnknown() {
+				resp.Diagnostics.AddError(
+					"Validation Error",
+					fmt.Sprintf("members.%d.member must be provided", i),
+				)
+			}
+		}
 	}
 }
 

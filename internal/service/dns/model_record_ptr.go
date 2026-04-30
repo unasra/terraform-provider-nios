@@ -272,9 +272,10 @@ var RecordPtrResourceSchemaAttributes = map[string]schema.Attribute{
 			stringplanmodifier.UseStateForUnknown(),
 		},
 		Validators: []validator.String{
-			stringvalidator.Any(
+			customvalidator.IsValidArpaOrFQDN(
 				customvalidator.IsValidArpaIPv4(),
 				customvalidator.IsValidArpaIPv6(),
+				customvalidator.IsValidDomainName(customvalidator.WithAllowNullOrEmpty()),
 			),
 		},
 		MarkdownDescription: "The name of the DNS PTR record in FQDN format. Either of `ipv4addr`,`ipv6addr`, `name` or `func_call` to invoke `next_available_ip` is required.",
@@ -282,7 +283,7 @@ var RecordPtrResourceSchemaAttributes = map[string]schema.Attribute{
 	"ptrdname": schema.StringAttribute{
 		Required: true,
 		Validators: []validator.String{
-			customvalidator.IsValidFQDN(),
+			customvalidator.IsValidDomainName(),
 		},
 		MarkdownDescription: "The domain name of the DNS PTR record in FQDN format.",
 	},

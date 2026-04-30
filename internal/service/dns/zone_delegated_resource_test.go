@@ -477,7 +477,7 @@ func TestAccZoneDelegatedResource_ZoneFormatIPV4(t *testing.T) {
 		Steps: []resource.TestStep{
 			// Create and Read
 			{
-				Config: testAccZoneDelegatedZoneFormat("10.1.0.132/32", delegatedToName, "10.0.0.1", "IPV4"),
+				Config: testAccZoneDelegatedZoneFormat("192.168.10.21/32", delegatedToName, "10.0.0.1", "IPV4"),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckZoneDelegatedExists(context.Background(), resourceName, &v),
 					resource.TestCheckResourceAttr(resourceName, "zone_format", "IPV4"),
@@ -491,7 +491,7 @@ func TestAccZoneDelegatedResource_ZoneFormatIPV4(t *testing.T) {
 func TestAccZoneDelegatedResource_ZoneFormatIPV6(t *testing.T) {
 	var resourceName = "nios_dns_zone_delegated.test_zone_format"
 	var v dns.ZoneDelegated
-	delegatedToName := acctest.RandomNameWithPrefix("zone-delegated") + ".com"
+	delegatedToName := acctest.RandomNameWithPrefix("zone-delegated") + ".example.com"
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t) },
@@ -499,7 +499,7 @@ func TestAccZoneDelegatedResource_ZoneFormatIPV6(t *testing.T) {
 		Steps: []resource.TestStep{
 			// Create and Read
 			{
-				Config: testAccZoneDelegatedZoneFormat("8.0.0.0.3.a.5.8.8.b.d.0.1.0.0.2.ip6.arpa.", delegatedToName, "10.0.0.1", "IPV6"),
+				Config: testAccZoneDelegatedZoneFormat("2002::/64", delegatedToName, "10.0.0.1", "IPV6"),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckZoneDelegatedExists(context.Background(), resourceName, &v),
 					resource.TestCheckResourceAttr(resourceName, "zone_format", "IPV6"),
@@ -565,6 +565,19 @@ func testAccCheckZoneDelegatedDisappears(ctx context.Context, v *dns.ZoneDelegat
 			return err
 		}
 		return nil
+	}
+}
+
+func testAccZoneDelegatedImportStateIdFunc(resourceName string) resource.ImportStateIdFunc {
+	return func(s *terraform.State) (string, error) {
+		rs, ok := s.RootModule().Resources[resourceName]
+		if !ok {
+			return "", fmt.Errorf("not found: %s", resourceName)
+		}
+		if rs.Primary.Attributes["ref"] == "" {
+			return "", fmt.Errorf("ref is not set")
+		}
+		return rs.Primary.Attributes["ref"], nil
 	}
 }
 
@@ -740,6 +753,22 @@ resource "nios_dns_zone_delegated" "test_ms_ddns_mode" {
 
 func testAccZoneDelegatedNsGroup(fqdn, delegateToName, delegateToAddress, nsGroup string) string {
 	return fmt.Sprintf(`
+resource "nios_dns_nsgroup_delegation" "test_example_nsg1" {
+    name = "example_nsg1"
+    delegate_to = [{
+		name = "delegate_to_ns_group",
+		address = "2.3.4.5",
+	}]
+}
+
+resource "nios_dns_nsgroup_delegation" "test_example_nsg2" {
+    name = "example_nsg2"
+    delegate_to = [{
+		name = "delegate_to_ns_group",
+		address = "3.4.6.5",
+	}]
+}
+
 resource "nios_dns_zone_delegated" "test_ns_group" {
 	fqdn = %q
     delegate_to = [
@@ -749,6 +778,7 @@ resource "nios_dns_zone_delegated" "test_ns_group" {
 		}
 	]
     ns_group = %q
+	depends_on = [nios_dns_nsgroup_delegation.test_example_nsg1, nios_dns_nsgroup_delegation.test_example_nsg2]
 }
 `, fqdn, delegateToName, delegateToAddress, nsGroup)
 }
@@ -797,4 +827,43 @@ resource "nios_dns_zone_delegated" "test_zone_format" {
     zone_format = %q
 }
 `, fqdn, delegateToName, delegateToAddress, zoneFormat)
+}
+
+func TestAccZoneDelegatedResource_Import(t *testing.T) {
+	var resourceName = "nios_dns_zone_delegated.test"
+	var v dns.ZoneDelegated
+	fqdn := acctest.RandomNameWithPrefix("zone-delegated") + ".example.com"
+	delegatedToName := acctest.RandomNameWithPrefix("zone-delegated") + ".com"
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck:                 func() { acctest.PreCheck(t) },
+		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccZoneDelegatedBasicConfig(fqdn, delegatedToName, "10.0.0.1"),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckZoneDelegatedExists(context.Background(), resourceName, &v),
+				),
+			},
+			// Import with PlanOnly to detect differences
+			{
+				ResourceName:                         resourceName,
+				ImportState:                          true,
+				ImportStateIdFunc:                    testAccZoneDelegatedImportStateIdFunc(resourceName),
+				ImportStateVerify:                    true,
+				ImportStateVerifyIdentifierAttribute: "ref",
+				PlanOnly:                             true,
+			},
+			// Import and Verify
+			{
+				ResourceName:                         resourceName,
+				ImportState:                          true,
+				ImportStateIdFunc:                    testAccZoneDelegatedImportStateIdFunc(resourceName),
+				ImportStateVerify:                    true,
+				ImportStateVerifyIgnore:              []string{"extattrs_all"},
+				ImportStateVerifyIdentifierAttribute: "ref",
+			},
+			// Delete testing automatically occurs in TestCase
+		},
+	})
 }

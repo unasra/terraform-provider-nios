@@ -5,7 +5,6 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/hashicorp/terraform-plugin-framework-nettypes/iptypes"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	schema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -25,16 +24,16 @@ import (
 )
 
 type ZoneAuthMsSecondariesModel struct {
-	Address                      iptypes.IPAddress `tfsdk:"address"`
-	IsMaster                     types.Bool        `tfsdk:"is_master"`
-	NsIp                         types.String      `tfsdk:"ns_ip"`
-	NsName                       types.String      `tfsdk:"ns_name"`
-	Stealth                      types.Bool        `tfsdk:"stealth"`
-	SharedWithMsParentDelegation types.Bool        `tfsdk:"shared_with_ms_parent_delegation"`
+	Address                      types.String `tfsdk:"address"`
+	IsMaster                     types.Bool   `tfsdk:"is_master"`
+	NsIp                         types.String `tfsdk:"ns_ip"`
+	NsName                       types.String `tfsdk:"ns_name"`
+	Stealth                      types.Bool   `tfsdk:"stealth"`
+	SharedWithMsParentDelegation types.Bool   `tfsdk:"shared_with_ms_parent_delegation"`
 }
 
 var ZoneAuthMsSecondariesAttrTypes = map[string]attr.Type{
-	"address":                          iptypes.IPAddressType{},
+	"address":                          types.StringType,
 	"is_master":                        types.BoolType,
 	"ns_ip":                            types.StringType,
 	"ns_name":                          types.StringType,
@@ -44,8 +43,10 @@ var ZoneAuthMsSecondariesAttrTypes = map[string]attr.Type{
 
 var ZoneAuthMsSecondariesResourceSchemaAttributes = map[string]schema.Attribute{
 	"address": schema.StringAttribute{
-		CustomType:          iptypes.IPAddressType{},
-		Required:            true,
+		Required: true,
+		Validators: []validator.String{
+			customvalidator.IsValidIPOrFQDN(),
+		},
 		MarkdownDescription: "The address of the server.",
 	},
 	"is_master": schema.BoolAttribute{
@@ -99,7 +100,7 @@ func (m *ZoneAuthMsSecondariesModel) Expand(ctx context.Context, diags *diag.Dia
 		return nil
 	}
 	to := &dns.ZoneAuthMsSecondaries{
-		Address:  flex.ExpandIPAddress(m.Address),
+		Address:  flex.ExpandStringPointer(m.Address),
 		IsMaster: flex.ExpandBoolPointer(m.IsMaster),
 		NsIp:     flex.ExpandStringPointer(m.NsIp),
 		NsName:   flex.ExpandStringPointer(m.NsName),
@@ -126,7 +127,7 @@ func (m *ZoneAuthMsSecondariesModel) Flatten(ctx context.Context, from *dns.Zone
 	if m == nil {
 		*m = ZoneAuthMsSecondariesModel{}
 	}
-	m.Address = flex.FlattenIPAddress(from.Address)
+	m.Address = flex.FlattenStringPointer(from.Address)
 	m.IsMaster = types.BoolPointerValue(from.IsMaster)
 	m.NsIp = flex.FlattenStringPointer(from.NsIp)
 	m.NsName = flex.FlattenStringPointer(from.NsName)

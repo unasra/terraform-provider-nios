@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"maps"
 	"net/http"
-	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -17,6 +16,7 @@ import (
 	niosclient "github.com/infobloxopen/infoblox-nios-go-client/client"
 	"github.com/infobloxopen/infoblox-nios-go-client/dns"
 
+	"github.com/infobloxopen/terraform-provider-nios/internal/config"
 	"github.com/infobloxopen/terraform-provider-nios/internal/utils"
 )
 
@@ -42,7 +42,7 @@ func (r *IPAllocationResource) Metadata(ctx context.Context, req resource.Metada
 
 func (r *IPAllocationResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "",
+		MarkdownDescription: "Manages IP Allocation for a DNS HOST Record",
 		Attributes:          IPAllocationResourceSchemaAttributes,
 	}
 }
@@ -79,11 +79,13 @@ func (r *IPAllocationResource) ValidateConfig(ctx context.Context, req resource.
 	ipv4Empty := data.Ipv4addrs.IsNull() || len(data.Ipv4addrs.Elements()) == 0
 	ipv6Empty := data.Ipv6addrs.IsNull() || len(data.Ipv6addrs.Elements()) == 0
 
-	if ipv4Empty && ipv6Empty {
-		resp.Diagnostics.AddError(
-			"Invalid Configuration",
-			"At least one of 'ipv4addrs' or 'ipv6addrs' must be configured.",
-		)
+	if !data.Ipv4addrs.IsUnknown() && !data.Ipv6addrs.IsUnknown() {
+		if ipv4Empty && ipv6Empty {
+			resp.Diagnostics.AddError(
+				"Invalid Configuration",
+				"At least one of 'ipv4addrs' or 'ipv6addrs' must be configured.",
+			)
+		}
 	}
 
 	if len(data.Ipv4addrs.Elements()) > 1 {
@@ -98,25 +100,6 @@ func (r *IPAllocationResource) ValidateConfig(ctx context.Context, req resource.
 			"Invalid Configuration",
 			"'ipv6addrs' can contain at most one element.",
 		)
-	}
-
-	// Validate FQDN if configure_for_dns is true
-	if data.ConfigureForDns.ValueBool() {
-		name := data.Name.ValueString()
-		if strings.TrimSpace(name) != name {
-			resp.Diagnostics.AddAttributeError(
-				path.Root("name"),
-				"Invalid FQDN",
-				"must not contain leading or trailing whitespaces",
-			)
-		}
-		if strings.HasSuffix(name, ".") {
-			resp.Diagnostics.AddAttributeError(
-				path.Root("name"),
-				"Invalid FQDN",
-				"must not end with a dot",
-			)
-		}
 	}
 }
 
@@ -220,6 +203,7 @@ func (r *IPAllocationResource) Read(ctx context.Context, req resource.ReadReques
 		Read(ctx, utils.ExtractResourceRef(data.Ref.ValueString())).
 		ReturnFieldsPlus(readableAttributesForIPAllocation).
 		ReturnAsObject(1).
+		ProxySearch(config.GetProxySearch()).
 		Execute()
 
 	// If the resource is not found, try searching using Extensible Attributes
@@ -305,6 +289,7 @@ func (r *IPAllocationResource) ReadByExtAttrs(ctx context.Context, data *IPAlloc
 		Extattrfilter(idMap).
 		ReturnAsObject(1).
 		ReturnFieldsPlus(readableAttributesForIPAllocation).
+		ProxySearch(config.GetProxySearch()).
 		Execute()
 	if err != nil {
 		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to read RecordHost by extattrs, got error: %s", err))

@@ -92,6 +92,23 @@ func RandomAlphaNumeric(length int) string {
 	return string(b)
 }
 
+// RandomMACAddress generates a random MAC address
+func RandomMACAddress() string {
+	return fmt.Sprintf("%02x:%02x:%02x:%02x:%02x:%02x",
+		rand.Intn(256),
+		rand.Intn(256),
+		rand.Intn(256),
+		rand.Intn(256),
+		rand.Intn(256),
+		rand.Intn(256))
+}
+
+// Random32Hexadecimal generates a random 32-character hexadecimal string
+func Random32Hexadecimal() string {
+	// Two 64-bit random values = 128 bits = 32 hex characters
+	return fmt.Sprintf("%016x%016x", rand.Uint64(), rand.Uint64())
+}
+
 func PreCheck(t *testing.T) {
 	hostURL := os.Getenv("NIOS_HOST_URL")
 	if hostURL == "" {

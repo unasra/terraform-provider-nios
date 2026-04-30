@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 
 	niosclient "github.com/infobloxopen/infoblox-nios-go-client/client"
+	"github.com/infobloxopen/terraform-provider-nios/internal/config"
 	"github.com/infobloxopen/terraform-provider-nios/internal/utils"
 )
 
@@ -70,14 +71,37 @@ func (r *Ipv6rangetemplateResource) ValidateConfig(ctx context.Context, req reso
 		return
 	}
 
-	// Check if server_association_type is MEMBER
-	if config.ServerAssociationType.ValueString() == "MEMBER" {
-		// Ensure the member field is not empty
+	// For Configuration object, any attributes not defined by the user appear as null, unless derived from another instance.
+	// We perform IsUnknown() check to handle variables from .tfvars that are resolved
+	// during the plan phase rather than validation phase, preventing false validation errors.
+
+	var serverAssociationType string
+
+	if !config.ServerAssociationType.IsUnknown() {
+		serverAssociationType = "NONE"
+		if !config.ServerAssociationType.IsNull() {
+			serverAssociationType = config.ServerAssociationType.ValueString()
+		}
+	}
+
+	// If server_association_type is MEMBER, member field must be set
+	if serverAssociationType == "MEMBER" {
 		if config.Member.IsNull() || config.Member.IsUnknown() {
 			resp.Diagnostics.AddAttributeError(
 				path.Root("member"),
 				"Invalid Configuration",
 				"The 'member' field must be set when 'server_association_type' is set to 'MEMBER'.",
+			)
+		}
+	}
+
+	// If server_association_type is NONE, member field cannot be set
+	if serverAssociationType == "NONE" {
+		if !config.Member.IsNull() && !config.Member.IsUnknown() {
+			resp.Diagnostics.AddAttributeError(
+				path.Root("member"),
+				"Invalid Configuration",
+				"The 'member' field cannot be set when 'server_association_type' is set to 'NONE' (default).",
 			)
 		}
 	}
@@ -128,6 +152,7 @@ func (r *Ipv6rangetemplateResource) Read(ctx context.Context, req resource.ReadR
 		Read(ctx, utils.ExtractResourceRef(data.Ref.ValueString())).
 		ReturnFieldsPlus(readableAttributesForIpv6rangetemplate).
 		ReturnAsObject(1).
+		ProxySearch(config.GetProxySearch()).
 		Execute()
 
 	// Handle not found case

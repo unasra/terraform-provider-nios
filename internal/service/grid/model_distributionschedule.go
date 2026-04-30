@@ -10,6 +10,7 @@ import (
 	schema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 
 	"github.com/infobloxopen/infoblox-nios-go-client/grid"
 
@@ -148,7 +149,14 @@ func (m *DistributionscheduleModel) Flatten(ctx context.Context, from *grid.Dist
 	m.Active = types.BoolPointerValue(from.Active)
 	m.StartTime = flex.FlattenUnixTime(from.StartTime, diags)
 	m.TimeZone = flex.FlattenStringPointer(from.TimeZone)
+	planUpgradeGroups := m.UpgradeGroups
 	m.UpgradeGroups = flex.FlattenFrameworkListNestedBlock(ctx, from.UpgradeGroups, DistributionscheduleUpgradeGroupsAttrTypes, diags, FlattenDistributionscheduleUpgradeGroups)
+	if !planUpgradeGroups.IsUnknown() {
+		reOrderedList, diags := utils.ReorderAndFilterNestedListResponse(ctx, planUpgradeGroups, m.UpgradeGroups, "name")
+		if !diags.HasError() {
+			m.UpgradeGroups = reOrderedList.(basetypes.ListValue)
+		}
+	}
 }
 
 func (m *DistributionscheduleModel) PutExpand(to *grid.Distributionschedule) *grid.Distributionschedule {

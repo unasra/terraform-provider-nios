@@ -14,6 +14,7 @@ import (
 
 	niosclient "github.com/infobloxopen/infoblox-nios-go-client/client"
 
+	"github.com/infobloxopen/terraform-provider-nios/internal/config"
 	"github.com/infobloxopen/terraform-provider-nios/internal/utils"
 )
 
@@ -22,6 +23,7 @@ var readableAttributesForIpv6networkcontainer = "cloud_info,comment,ddns_domainn
 // Ensure provider defined types fully satisfy framework interfaces.
 var _ resource.Resource = &Ipv6networkcontainerResource{}
 var _ resource.ResourceWithImportState = &Ipv6networkcontainerResource{}
+var _ resource.ResourceWithValidateConfig = &Ipv6networkcontainerResource{}
 
 func NewIpv6networkcontainerResource() resource.Resource {
 	return &Ipv6networkcontainerResource{}
@@ -138,6 +140,7 @@ func (r *Ipv6networkcontainerResource) Read(ctx context.Context, req resource.Re
 		Read(ctx, utils.ExtractResourceRef(data.Ref.ValueString())).
 		ReturnFieldsPlus(readableAttributesForIpv6networkcontainer).
 		ReturnAsObject(1).
+		ProxySearch(config.GetProxySearch()).
 		Execute()
 
 	// If the resource is not found, try searching using Extensible Attributes
@@ -213,6 +216,7 @@ func (r *Ipv6networkcontainerResource) ReadByExtAttrs(ctx context.Context, data 
 		Extattrfilter(idMap).
 		ReturnAsObject(1).
 		ReturnFieldsPlus(readableAttributesForIpv6networkcontainer).
+		ProxySearch(config.GetProxySearch()).
 		Execute()
 	if err != nil {
 		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to read Ipv6networkcontainer by extattrs, got error: %s", err))
@@ -362,8 +366,19 @@ func (r *Ipv6networkcontainerResource) ValidateConfig(ctx context.Context, req r
 		return
 	}
 
+	var dhcpLeaseTimeValue string
+	var hasDhcpLeaseTime bool
+
 	// Check if options are defined
 	if !data.Options.IsNull() && !data.Options.IsUnknown() {
+
+		var options []Ipv6networkcontainerOptionsModel
+		diags := data.Options.ElementsAs(ctx, &options, false)
+		resp.Diagnostics.Append(diags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+
 		// Special DHCP option names that require use_option to be set
 		specialOptions := map[string]bool{
 			"routers":                  true,
@@ -383,13 +398,6 @@ func (r *Ipv6networkcontainerResource) ValidateConfig(ctx context.Context, req r
 			28: true,
 			51: true,
 			23: true,
-		}
-
-		var options []Ipv6networkcontainerOptionsModel
-		diags := data.Options.ElementsAs(ctx, &options, false)
-		resp.Diagnostics.Append(diags...)
-		if resp.Diagnostics.HasError() {
-			return
 		}
 
 		for i, option := range options {
@@ -433,6 +441,7 @@ func (r *Ipv6networkcontainerResource) ValidateConfig(ctx context.Context, req r
 						"The 'value' attribute cannot be set as empty for Special DHCP Option '"+optionName+"' when 'use_option' is set to false.",
 					)
 				}
+				return
 			}
 
 			if !isSpecialOption && !option.UseOption.IsNull() && !option.UseOption.IsUnknown() {
@@ -445,21 +454,122 @@ func (r *Ipv6networkcontainerResource) ValidateConfig(ctx context.Context, req r
 						optionName),
 				)
 			}
+
+			if option.Name.ValueString() == "dhcp-lease-time" {
+				hasDhcpLeaseTime = true
+				dhcpLeaseTimeValue = option.Value.ValueString()
+			}
 		}
+
 		// When dhcp-lease-time option is set, valid_lifetime attribute must have the same value as option value
-		if !data.ValidLifetime.IsNull() && !data.ValidLifetime.IsUnknown() && !data.Options.IsNull() && !data.Options.IsUnknown() {
-			for i, option := range options {
-				if !option.Name.IsNull() && !option.Name.IsUnknown() && option.Name.ValueString() == "dhcp-lease-time" {
-					if !option.Value.IsNull() && !option.Value.IsUnknown() &&
-						option.Value.ValueString() != strconv.FormatInt(data.ValidLifetime.ValueInt64(), 10) {
-						resp.Diagnostics.AddAttributeError(
-							path.Root("options").AtListIndex(i).AtName("value"),
-							"Invalid configuration for Valid Lifetime",
-							"valid_lifetime attribute must match the 'value' attribute for DHCP Option 'dhcp-lease-time'.",
-						)
-					}
+		if hasDhcpLeaseTime && !data.ValidLifetime.IsNull() && !data.ValidLifetime.IsUnknown() {
+			if dhcpLeaseTimeValue != strconv.FormatInt(data.ValidLifetime.ValueInt64(), 10) {
+				resp.Diagnostics.AddAttributeError(
+					path.Root("valid_lifetime"),
+					"Invalid configuration for Valid Lifetime",
+					"valid_lifetime attribute must match the 'value' attribute for DHCP Option 'dhcp-lease-time'.",
+				)
+			}
+		}
+	}
+
+	// Preferred lifetime must be less than or equal to valid lifetime
+	if !data.PreferredLifetime.IsNull() && !data.PreferredLifetime.IsUnknown() {
+		if (data.ValidLifetime.IsUnknown() || data.ValidLifetime.IsNull()) && !hasDhcpLeaseTime {
+			resp.Diagnostics.AddAttributeError(
+				path.Root("preferred_lifetime"),
+				"Invalid configuration",
+				"Either 'valid_lifetime' attribute or 'dhcp-lease-time' option must be set when 'preferred_lifetime' is specified.",
+			)
+		} else if !data.ValidLifetime.IsNull() && !data.ValidLifetime.IsUnknown() {
+			if data.PreferredLifetime.ValueInt64() > data.ValidLifetime.ValueInt64() {
+				resp.Diagnostics.AddAttributeError(
+					path.Root("preferred_lifetime"),
+					"Invalid configuration",
+					"The 'preferred_lifetime' must be less than or equal to 'valid_lifetime'.",
+				)
+			}
+		} else if hasDhcpLeaseTime {
+			// if valid_lifetime is not set, compare with DHCP lease time
+			if dhcpLeaseTimeInt, err := strconv.ParseInt(dhcpLeaseTimeValue, 10, 64); err == nil {
+				if data.PreferredLifetime.ValueInt64() > dhcpLeaseTimeInt {
+					resp.Diagnostics.AddAttributeError(
+						path.Root("preferred_lifetime"),
+						"Invalid configuration",
+						"The 'preferred_lifetime' must be less than or equal to 'dhcp-lease-time' (valid_lifetime) option value.",
+					)
 				}
 			}
+		}
+	}
+
+	// Check for valid lifetime or dhcp-lease-time when preferred_lifetime is NOT set
+	if data.PreferredLifetime.IsNull() || data.PreferredLifetime.IsUnknown() {
+		// validate that valid_lifetime is >= 27000
+		if !data.ValidLifetime.IsNull() && !data.ValidLifetime.IsUnknown() &&
+			!data.UseValidLifetime.IsNull() && !data.UseValidLifetime.IsUnknown() {
+			if data.ValidLifetime.ValueInt64() < 27000 {
+				resp.Diagnostics.AddAttributeError(
+					path.Root("valid_lifetime"),
+					"Invalid configuration",
+					"When 'preferred_lifetime' is not set ,"+
+						"'valid_lifetime' must be greater than or equal to 27000.",
+				)
+			}
+		}
+
+		// validate that dhcp-lease-time  is >= 27000
+		if hasDhcpLeaseTime {
+			if dhcpLeaseTimeInt, err := strconv.ParseInt(dhcpLeaseTimeValue, 10, 64); err == nil {
+				if dhcpLeaseTimeInt < 27000 {
+					resp.Diagnostics.AddAttributeError(
+						path.Root("options"),
+						"Invalid configuration",
+						"When 'preferred_lifetime' is not set, the DHCP option "+
+							"'dhcp-lease-time' must be greater than or equal to 27000.",
+					)
+				}
+			}
+		}
+	}
+
+	// Validate discovery_blackout_setting blackout_schedule
+	if !data.DiscoveryBlackoutSetting.IsNull() && !data.DiscoveryBlackoutSetting.IsUnknown() {
+		utils.ValidateScheduleConfig(
+			data.DiscoveryBlackoutSetting,
+			"blackout_schedule",
+			path.Root("discovery_blackout_setting"),
+			&resp.Diagnostics,
+		)
+	}
+
+	// Validate port_control_blackout_setting blackout_schedule
+	if !data.PortControlBlackoutSetting.IsNull() && !data.PortControlBlackoutSetting.IsUnknown() {
+		utils.ValidateScheduleConfig(
+			data.PortControlBlackoutSetting,
+			"blackout_schedule",
+			path.Root("port_control_blackout_setting"),
+			&resp.Diagnostics,
+		)
+	}
+
+	// discovery_basic_poll_settings can be set only when use_discovery_basic_polling_settings is true
+	if !data.DiscoveryBasicPollSettings.IsNull() && !data.DiscoveryBasicPollSettings.IsUnknown() {
+		if !data.UseDiscoveryBasicPollingSettings.IsNull() && !data.UseDiscoveryBasicPollingSettings.IsUnknown() && !data.UseDiscoveryBasicPollingSettings.ValueBool() {
+			resp.Diagnostics.AddError(
+				"Discovery Basic Poll Settings Not Allowed",
+				"When use_discovery_basic_polling_settings is set to false, discovery_basic_poll_settings cannot be configured. Either set use_discovery_basic_polling_settings to true or remove the discovery_basic_poll_settings block.",
+			)
+		}
+	}
+
+	// same_port_control_discovery_blackout can be set only when use_blackout_setting is true
+	if !data.SamePortControlDiscoveryBlackout.IsNull() && !data.SamePortControlDiscoveryBlackout.IsUnknown() {
+		if !data.UseBlackoutSetting.IsNull() && !data.UseBlackoutSetting.IsUnknown() && !data.UseBlackoutSetting.ValueBool() {
+			resp.Diagnostics.AddError(
+				"Same Port Control Discovery Blackout Not Allowed",
+				"When use_blackout_setting is set to false, same_port_control_discovery_blackout cannot be configured. Either set use_blackout_setting to true or remove the same_port_control_discovery_blackout attribute.",
+			)
 		}
 	}
 }

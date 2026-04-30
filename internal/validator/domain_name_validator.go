@@ -21,6 +21,9 @@ var (
 	labelsPattern  = regexp.MustCompile(`(.*?)?([^\\])\.`)
 )
 
+// DomainNameOption defines a functional option for domainNameValidator
+type DomainNameOption func(*domainNameValidator)
+
 // domainNameValidator validates if the provided value is a valid domain name.
 type domainNameValidator struct {
 	isMultiLabel        bool
@@ -32,14 +35,20 @@ type domainNameValidator struct {
 
 // IsValidDomainName creates a new domain name validator with default options
 // (multi-label enabled, null/empty not allowed, root zone allowed, trailing dot not allowed, printable chars not checked)
-func IsValidDomainName() validator.String {
-	return domainNameValidator{
+func IsValidDomainName(opts ...DomainNameOption) validator.String {
+	v := domainNameValidator{
 		isMultiLabel:        true,
 		allowRootZone:       true,
 		allowNullOrEmpty:    false,
 		allowTrailingDot:    false,
 		checkPrintableChars: false,
 	}
+
+	for _, opt := range opts {
+		opt(&v)
+	}
+
+	return v
 }
 
 func (v domainNameValidator) Description(ctx context.Context) string {
@@ -80,7 +89,7 @@ func (v domainNameValidator) ValidateString(ctx context.Context, req validator.S
 		resp.Diagnostics.AddAttributeError(
 			req.Path,
 			"Invalid Domain Name Format",
-			fmt.Sprintf("%s: %q", err.Error(), value),
+			err.Error(),
 		)
 	}
 }
@@ -90,6 +99,16 @@ func isDomainName(s string, allowMultiLabel bool, checkPrintableChars bool) erro
 	// Check for leading or trailing dots
 	if s == "" || strings.HasPrefix(s, dot) || strings.HasSuffix(s, dot) {
 		return fmt.Errorf("domain name cannot be empty or have leading/trailing dots")
+	}
+
+	// Check for leading or trailing whitespace
+	if strings.TrimSpace(s) != s {
+		return fmt.Errorf("domain name cannot have leading or trailing whitespace")
+	}
+
+	// Check for uppercase characters
+	if s != strings.ToLower(s) {
+		return fmt.Errorf("domain name must not contain uppercase characters")
 	}
 
 	// Check printable characters (ASCII 32-126)
@@ -199,4 +218,11 @@ func findLabelLength(s string) int {
 	}
 
 	return len(s) - skipChars
+}
+
+// WithAllowNullOrEmpty returns a DomainNameOption that allows null or empty string values.
+func WithAllowNullOrEmpty() DomainNameOption {
+	return func(v *domainNameValidator) {
+		v.allowNullOrEmpty = true
+	}
 }

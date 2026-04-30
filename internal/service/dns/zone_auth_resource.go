@@ -13,6 +13,7 @@ import (
 
 	niosclient "github.com/infobloxopen/infoblox-nios-go-client/client"
 
+	"github.com/infobloxopen/terraform-provider-nios/internal/config"
 	"github.com/infobloxopen/terraform-provider-nios/internal/utils"
 )
 
@@ -80,6 +81,34 @@ func (r *ZoneAuthResource) ValidateConfig(ctx context.Context, req resource.Vali
 		}
 	}
 
+    hasMsSyncDisabled := !data.MsSyncDisabled.IsNull() && !data.MsSyncDisabled.IsUnknown()
+    if hasMsSyncDisabled {
+        hasMsPrimaries := !data.MsPrimaries.IsNull() && !data.MsPrimaries.IsUnknown()
+        if !hasMsPrimaries {
+            resp.Diagnostics.AddError(
+                "Invalid Configuration",
+                "'ms_primaries' must be provided when 'ms_sync_disabled' is set.",
+            )
+        }
+    }
+
+	// Validation for use_soa_email and soa_serial_number requiring grid_primary or ns_group
+    hasUseSoaEmail := !data.UseSoaEmail.IsNull() && !data.UseSoaEmail.IsUnknown()
+    hasSoaSerialNumber := !data.SoaSerialNumber.IsNull() && !data.SoaSerialNumber.IsUnknown()
+	hasMemberSoaMnames := !data.MemberSoaMnames.IsNull() && !data.MemberSoaMnames.IsUnknown()
+
+    if hasUseSoaEmail || hasSoaSerialNumber || hasMemberSoaMnames {
+        hasGridPrimary := !data.GridPrimary.IsNull() && !data.GridPrimary.IsUnknown()
+        hasNsGroup := !data.NsGroup.IsNull() && !data.NsGroup.IsUnknown()
+
+        if !hasGridPrimary && !hasNsGroup {
+            resp.Diagnostics.AddError(
+                "Invalid Configuration",
+                "When use_soa_email, soa_serial_number, or member_soa_mnames is specified, either grid_primary or ns_group must be provided.",
+            )
+        }
+    }
+
 	// Validation for mutually exclusive primary servers
 	specifiedPrimaries := []string{}
 
@@ -114,6 +143,21 @@ func (r *ZoneAuthResource) ValidateConfig(ctx context.Context, req resource.Vali
 			resp.Diagnostics.AddError(
 				"Secondary Server Requires Exactly One Primary Server",
 				"When secondary servers (grid_secondaries, external_secondaries, or ms_secondaries) are specified, exactly one primary server (grid_primary, external_primaries, or ms_primaries) is required.",
+			)
+		}
+	}
+
+	// Attribute ns_group can't be specified when any of primary or secondary server is specified
+	if !data.NsGroup.IsNull() && !data.NsGroup.IsUnknown() {
+		if (!data.GridPrimary.IsNull() && !data.GridPrimary.IsUnknown()) ||
+			(!data.ExternalPrimaries.IsNull() && !data.ExternalPrimaries.IsUnknown()) ||
+			(!data.MsPrimaries.IsNull() && !data.MsPrimaries.IsUnknown()) ||
+			(!data.GridSecondaries.IsNull() && !data.GridSecondaries.IsUnknown()) ||
+			(!data.ExternalSecondaries.IsNull() && !data.ExternalSecondaries.IsUnknown()) ||
+			(!data.MsSecondaries.IsNull() && !data.MsSecondaries.IsUnknown()) {
+			resp.Diagnostics.AddError(
+				"NS Group Not Allowed",
+				"The ns_group attribute cannot be specified when any of primary (grid_primary, external_primaries, or ms_primaries) or secondary server (grid_secondaries, external_secondaries, or ms_secondaries) is specified. Please remove the ns_group attribute or the primary/secondary server attributes.",
 			)
 		}
 	}
@@ -183,6 +227,7 @@ func (r *ZoneAuthResource) Read(ctx context.Context, req resource.ReadRequest, r
 		Read(ctx, utils.ExtractResourceRef(data.Ref.ValueString())).
 		ReturnFieldsPlus(readableAttributesForZoneAuth).
 		ReturnAsObject(1).
+		ProxySearch(config.GetProxySearch()).
 		Execute()
 
 	// If the resource is not found, try searching using Extensible Attributes
@@ -258,6 +303,7 @@ func (r *ZoneAuthResource) ReadByExtAttrs(ctx context.Context, data *ZoneAuthMod
 		Extattrfilter(idMap).
 		ReturnAsObject(1).
 		ReturnFieldsPlus(readableAttributesForZoneAuth).
+		ProxySearch(config.GetProxySearch()).
 		Execute()
 	if err != nil {
 		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to read ZoneAuth by extattrs, got error: %s", err))

@@ -12,6 +12,7 @@ import (
 
 	niosclient "github.com/infobloxopen/infoblox-nios-go-client/client"
 
+	"github.com/infobloxopen/terraform-provider-nios/internal/config"
 	"github.com/infobloxopen/terraform-provider-nios/internal/utils"
 )
 
@@ -20,6 +21,7 @@ var readableAttributesForSharedrecordgroup = "comment,extattrs,name,record_name_
 // Ensure provider defined types fully satisfy framework interfaces.
 var _ resource.Resource = &SharedrecordgroupResource{}
 var _ resource.ResourceWithImportState = &SharedrecordgroupResource{}
+var _ resource.ResourceWithValidateConfig = &SharedrecordgroupResource{}
 
 func NewSharedrecordgroupResource() resource.Resource {
 	return &SharedrecordgroupResource{}
@@ -125,6 +127,7 @@ func (r *SharedrecordgroupResource) Read(ctx context.Context, req resource.ReadR
 		Read(ctx, utils.ExtractResourceRef(data.Ref.ValueString())).
 		ReturnFieldsPlus(readableAttributesForSharedrecordgroup).
 		ReturnAsObject(1).
+		ProxySearch(config.GetProxySearch()).
 		Execute()
 
 	// If the resource is not found, try searching using Extensible Attributes
@@ -200,6 +203,7 @@ func (r *SharedrecordgroupResource) ReadByExtAttrs(ctx context.Context, data *Sh
 		Extattrfilter(idMap).
 		ReturnAsObject(1).
 		ReturnFieldsPlus(readableAttributesForSharedrecordgroup).
+		ProxySearch(config.GetProxySearch()).
 		Execute()
 	if err != nil {
 		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to read Sharedrecordgroup by extattrs, got error: %s", err))
@@ -320,6 +324,34 @@ func (r *SharedrecordgroupResource) Delete(ctx context.Context, req resource.Del
 		}
 		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to delete Sharedrecordgroup, got error: %s", err))
 		return
+	}
+}
+
+func (r *SharedrecordgroupResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	var data SharedrecordgroupModel
+	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	var zoneAssociations []SharedrecordgroupZoneAssociationsModel
+	diags := data.ZoneAssociations.ElementsAs(ctx, &zoneAssociations, false)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Fqdn in Zone Associations must is required
+	for i, zoneAssociation := range zoneAssociations {
+		if zoneAssociation.Fqdn.IsUnknown() {
+			continue
+		}
+		if zoneAssociation.Fqdn.IsNull() || zoneAssociation.Fqdn.ValueString() == "" {
+			resp.Diagnostics.AddError(
+				"Invalid Configuration for Sharedrecordgroup",
+				fmt.Sprintf("The 'fqdn' attribute is required for each item in 'zone_associations'. Please provide a valid FQDN for item index %d.", i),
+			)
+		}
 	}
 }
 

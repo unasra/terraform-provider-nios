@@ -118,7 +118,10 @@ var DtcServerResourceSchemaAttributes = map[string]schema.Attribute{
 		MarkdownDescription: "The health status of DTC Server",
 	},
 	"host": schema.StringAttribute{
-		Required:            true,
+		Required: true,
+		Validators: []validator.String{
+			customvalidator.IsValidIPv4OrFQDN(),
+		},
 		MarkdownDescription: "The address or FQDN of the server.",
 	},
 	"monitors": schema.ListNestedAttribute{
@@ -146,6 +149,7 @@ var DtcServerResourceSchemaAttributes = map[string]schema.Attribute{
 		},
 		Validators: []validator.String{
 			stringvalidator.AlsoRequires(path.MatchRoot("use_sni_hostname")),
+			customvalidator.IsValidDomainName(),
 		},
 		MarkdownDescription: "The hostname for Server Name Indication (SNI) in FQDN format.",
 	},

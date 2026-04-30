@@ -33,6 +33,7 @@ var NetworkcontainerSubscribeSettingsResourceSchemaAttributes = map[string]schem
 	"enabled_attributes": schema.ListAttribute{
 		ElementType:         types.StringType,
 		Optional:            true,
+		Computed:            true,
 		MarkdownDescription: "The list of Cisco ISE attributes allowed for subscription.",
 	},
 	"mapped_ea_attributes": schema.ListNestedAttribute{
@@ -40,6 +41,7 @@ var NetworkcontainerSubscribeSettingsResourceSchemaAttributes = map[string]schem
 			Attributes: NetworkcontainersubscribesettingsMappedEaAttributesResourceSchemaAttributes,
 		},
 		Optional:            true,
+		Computed:            true,
 		MarkdownDescription: "The list of NIOS extensible attributes to Cisco ISE attributes mappings.",
 	},
 }

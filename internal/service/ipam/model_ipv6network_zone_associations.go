@@ -38,7 +38,7 @@ var Ipv6networkZoneAssociationsResourceSchemaAttributes = map[string]schema.Attr
 		Required:            true,
 		MarkdownDescription: "The FQDN of the authoritative forward zone.",
 		Validators: []validator.String{
-			customvalidator.IsValidFQDN(),
+			customvalidator.IsValidDomainName(),
 		},
 	},
 	"is_default": schema.BoolAttribute{

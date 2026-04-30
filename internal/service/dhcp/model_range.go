@@ -281,6 +281,7 @@ var RangeResourceSchemaAttributes = map[string]schema.Attribute{
 		MarkdownDescription: "The bootserver address for the range. You can specify the name and/or IP address of the boot server that the host needs to boot. The boot server IPv4 Address or name in FQDN format.",
 		Validators: []validator.String{
 			stringvalidator.AlsoRequires(path.MatchRoot("use_bootserver")),
+			customvalidator.IsValidIPv4OrFQDN(),
 		},
 	},
 	"cloud_info": schema.SingleNestedAttribute{
@@ -351,10 +352,10 @@ var RangeResourceSchemaAttributes = map[string]schema.Attribute{
 		},
 		MarkdownDescription: "A string describing the utilization level of the range.",
 	},
+	// The default setting has been removed to support the `disable` option for MS Super Scope ranges.
 	"disable": schema.BoolAttribute{
 		Optional:            true,
 		Computed:            true,
-		Default:             booldefault.StaticBool(false),
 		MarkdownDescription: "Determines whether a range is disabled or not. When this is set to False, the range is enabled.",
 	},
 	"discover_now_status": schema.StringAttribute{
@@ -738,7 +739,7 @@ var RangeResourceSchemaAttributes = map[string]schema.Attribute{
 			stringplanmodifier.UseStateForUnknown(),
 		},
 		Validators: []validator.String{
-			customvalidator.IsValidFQDN(),
+			customvalidator.IsValidIPv4OrFQDN(),
 			stringvalidator.AlsoRequires(path.MatchRoot("use_nextserver")),
 		},
 		MarkdownDescription: "The name in FQDN and/or IPv4 Address of the next server that the host needs to boot.",
