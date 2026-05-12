@@ -1,0 +1,206 @@
+// Jenkinsfile
+// ───────────────────────────────────────────────────────────────────────────
+// Required build parameters (injected by GitHub Actions):
+//   GIT_COMMIT        – the SHA being built
+//   GIT_BRANCH        – branch name
+//   SIGNAL_GIST_ID    – GitHub Gist ID used as the signal channel
+//   SIGNAL_TOKEN      – GitHub PAT with gist scope (write)
+//   SIGNAL_RUN_ID     – GitHub Actions run ID (for collision-safe keying)
+// ───────────────────────────────────────────────────────────────────────────
+
+pipeline {
+    agent any
+
+    // Declare the parameters Jenkins should expose; GitHub Actions passes them
+    // via buildWithParameters.
+    parameters {
+        string(name: 'GIT_COMMIT',      defaultValue: '', description: 'Git SHA to build')
+        string(name: 'GIT_BRANCH',      defaultValue: 'main', description: 'Branch name')
+        string(name: 'SIGNAL_GIST_ID',  defaultValue: '', description: 'GitHub Gist signal channel ID')
+        string(name: 'SIGNAL_TOKEN',    defaultValue: '', description: 'GitHub PAT (gist scope)')
+        string(name: 'SIGNAL_RUN_ID',   defaultValue: '', description: 'GitHub Actions run ID')
+    }
+
+    // Customise these to match your project layout
+    environment {
+        TEST_RESULTS_DIR = 'test-results'
+        JUNIT_GLOB       = 'test-results/**-junit.xml'
+    }
+
+    stages {
+        // ── stage 0: load the signal helper ──────────────────────────────
+        // We load it once here so every subsequent stage can call signal.*
+        stage('Init') {
+            steps {
+                script {
+                    // Checkout your code first so signal.groovy is available
+                    checkout([
+                        $class: 'GitSCM',
+                        branches: [[name: params.GIT_COMMIT]],
+                        userRemoteConfigs: scm.userRemoteConfigs
+                    ])
+
+                    // Load the signal helper from the repo itself
+                    signal = load 'jenkins/signal.groovy'
+                }
+            }
+        }
+
+        // ── stage 1: environment setup ────────────────────────────────────
+        stage('Environment Setup') {
+            steps {
+                script {
+                    try {
+                        // ── YOUR SETUP STEPS GO HERE ──────────────────────
+                        sh '''
+                            echo "Setting up environment..."
+                            # e.g.: go mod download
+                            # e.g.: docker pull your-base-image
+                            # e.g.: install test dependencies
+                        '''
+                        // ─────────────────────────────────────────────────
+
+                        // Tell the Action this stage is done
+                        signal.success('env-setup', message: 'Dependencies ready')
+
+                    } catch (err) {
+                        signal.error('env-setup', "Environment setup failed: ${err.getMessage()}")
+                        error("Aborting pipeline — env setup failed: ${err.getMessage()}")
+                    }
+                }
+            }
+        }
+
+        // ── stage 2: run tests per directory ─────────────────────────────
+        stage('Run Tests') {
+            steps {
+                script {
+                    sh "mkdir -p ${TEST_RESULTS_DIR}"
+
+                    // ── YOUR TEST DIRECTORIES ─────────────────────────────
+                    // List every package/directory you want to test individually.
+                    def testDirs = [
+                        'pkg/auth',
+                        'pkg/api',
+                        'pkg/storage',
+                        // add more as needed
+                    ]
+                    // ─────────────────────────────────────────────────────
+
+                    def failures = []
+
+                    testDirs.each { dir ->
+                        def safeName = dir.replace('/', '_')
+                        def xmlFile  = "${TEST_RESULTS_DIR}/${safeName}-junit.xml"
+                        def txtFile  = "${TEST_RESULTS_DIR}/${safeName}.txt"
+
+                        echo "▶  Testing ${dir} ..."
+                        def rc = sh(
+                            script: """
+                                cd ${dir}
+                                go test -v ./... 2>&1 | tee ../../${txtFile} | \\
+                                    go-junit-report -set-exit-code > ../../${xmlFile}
+                            """,
+                            returnStatus: true
+                        )
+
+                        if (rc != 0) {
+                            failures << dir
+                            echo "✗  ${dir} — tests FAILED (exit ${rc})"
+                        } else {
+                            echo "✓  ${dir} — tests passed"
+                        }
+                    }
+
+                    // Collect artifact download URLs so the Action can fetch them
+                    // Jenkins's artifact API path: <BUILD_URL>artifact/<relative-path>
+                    def buildUrl   = env.BUILD_URL
+                    def xmlUrls    = []
+                    def txtUrls    = []
+
+                    sh("ls ${TEST_RESULTS_DIR}/").split('\n').each { fname ->
+                        if (fname.endsWith('-junit.xml')) {
+                            xmlUrls << "${buildUrl}artifact/${TEST_RESULTS_DIR}/${fname}"
+                        }
+                        if (fname.endsWith('.txt')) {
+                            txtUrls << "${buildUrl}artifact/${TEST_RESULTS_DIR}/${fname}"
+                        }
+                    }
+
+                    def allArtifactUrls = xmlUrls + txtUrls
+
+                    if (failures) {
+                        // Signal the specific failures but still send artifact URLs
+                        // so the Action can show which tests failed.
+                        signal.error(
+                            'tests-complete',
+                            "Tests failed in: ${failures.join(', ')}. Artifact URLs attached.",
+                        )
+                        // We do NOT call error() here — we want the archive step
+                        // to still run so the Action can download the XML.
+                        currentBuild.result = 'FAILURE'
+                    } else {
+                        signal.success('tests-complete',
+                            message  : 'All test suites passed',
+                            artifacts: allArtifactUrls
+                        )
+                    }
+                }
+            }
+        }
+
+        // ── stage 3: publish results inside Jenkins ───────────────────────
+        stage('Publish Results') {
+            steps {
+                script {
+                    // Standard Jenkins JUnit publisher (unchanged from your original)
+                    junit allowEmptyResults: true, testResults: "${JUNIT_GLOB}"
+                    archiveArtifacts artifacts: "${TEST_RESULTS_DIR}/*.txt,${JUNIT_GLOB}",
+                                     allowEmptyArchive: true
+
+                    // If tests failed we surface a clear Jenkins failure here too
+                    if (currentBuild.result == 'FAILURE') {
+                        error("One or more test suites failed — see archived results.")
+                    }
+                }
+            }
+        }
+    }
+
+    // ── global post handler: catch unexpected pipeline crashes ────────────
+    //
+    // NOTE: binding.hasVariable() is NOT sandbox-safe and cannot be used here.
+    // Instead, we guard with a try/catch — if `signal` was never assigned
+    // (e.g. the Init stage itself failed), the MissingPropertyException is
+    // caught and we fall back to just logging.  This pattern is fully
+    // sandbox-compatible in Jenkins 2.330+.
+    post {
+        failure {
+            script {
+                try {
+                    def stageName = env.STAGE_NAME ?: 'unknown'
+                    signal.error(
+                        stageName,
+                        "Jenkins pipeline failed unexpectedly at stage '${stageName}'. " +
+                        "Check Jenkins logs: ${env.BUILD_URL}console"
+                    )
+                } catch (MissingPropertyException ignored) {
+                    echo "⚠  signal not available in post-failure handler " +
+                         "(Init stage may have failed before signal was loaded)."
+                }
+            }
+        }
+        aborted {
+            script {
+                try {
+                    signal.aborted(
+                        env.STAGE_NAME ?: 'unknown',
+                        "Pipeline was manually aborted or timed out in Jenkins."
+                    )
+                } catch (MissingPropertyException ignored) {
+                    echo "⚠  signal not available in post-aborted handler."
+                }
+            }
+        }
+    }
+}

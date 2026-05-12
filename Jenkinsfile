@@ -40,12 +40,17 @@ node('Cloud-test1-172.28.81.12-label') {
             env.GO_VERSION        = '1.25.1'
             env.TF_VERSION        = params.TF_VERSION
             env.PATH              = "${env.WORKSPACE}/tools/go/bin:/usr/local/go/bin:${env.HOME}/go/bin:${env.WORKSPACE}/bin:${env.PATH}"
+            env.TEST_RESULTS_DIR = 'test-results'
+            env.JUNIT_GLOB       = 'test-results/**-junit.xml'
 
             try {
 
                 // ── Checkout ──────────────────────────────────────────────────
                 stage('Checkout') {
                     git url: "https://github.com/${params.REPO_USER}/terraform-provider-nios.git", branch: params.BRANCH
+
+                    // Load the signal helper from the repo itself
+                    signal = load '.github/scripts/signal.groovy'
                 }
 
                 // ── Install toolchain ─────────────────────────────────────────
@@ -122,22 +127,38 @@ node('Cloud-test1-172.28.81.12-label') {
 
                 // ── Integration config ────────────────────────────────────────
                 stage('Integration config') {
-                    sh '''#!/bin/bash
-                        set -euo pipefail
+                    steps {
+                        script {
+                            try {
+                                // ── YOUR SETUP STEPS GO HERE ──────────────────────
+                                sh '''#!/bin/bash
+                                    set -euo pipefail
 
-                        rm -f pipeline.env integration_test_setup.log
-                        go run ./internal/testdata/integration_test_setup.go 2>&1 | tee integration_test_setup.log
+                                    rm -f pipeline.env integration_test_setup.log
+                                    go run ./internal/testdata/integration_test_setup.go 2>&1 | tee integration_test_setup.log
 
-                        if grep -E '(^|[[:space:]])Error( |:)' integration_test_setup.log >/dev/null; then
-                            echo "integration_test_setup.go reported an error."
-                            exit 1
-                        fi
+                                    if grep -E '(^|[[:space:]])Error( |:)' integration_test_setup.log >/dev/null; then
+                                        echo "integration_test_setup.go reported an error."
+                                        exit 1
+                                    fi
 
-                        if [ ! -s pipeline.env ]; then
-                            echo "pipeline.env was not generated or is empty."
-                            exit 1
-                        fi
-                    '''
+                                    if [ ! -s pipeline.env ]; then
+                                        echo "pipeline.env was not generated or is empty."
+                                        exit 1
+                                    fi
+                                '''
+                                // ─────────────────────────────────────────────────
+
+                                // Tell the Action this stage is done
+                                signal.success('env-setup', message: 'Dependencies ready')
+
+                            } catch (err) {
+                                signal.error('env-setup', "Environment setup failed: ${err.getMessage()}")
+                                error("Aborting pipeline — env setup failed: ${err.getMessage()}")
+                            }
+                        }
+                    }
+                }
 
                     // Inject pipeline.env into Jenkins env
                     def envVars = readFile('pipeline.env').trim().split('\n')
@@ -189,6 +210,19 @@ node('Cloud-test1-172.28.81.12-label') {
                     Grid Master: ${env.NIOS_HOST_URL}
                     Grid Member: ${env.NIOS_MEMBER_URL}
                     """
+                    script {
+                        try {
+                            def stageName = env.STAGE_NAME ?: 'unknown'
+                            signal.error(
+                                stageName,
+                                "Jenkins pipeline failed unexpectedly at stage '${stageName}'. " +
+                                "Check Jenkins logs: ${env.BUILD_URL}console"
+                            )
+                        } catch (MissingPropertyException ignored) {
+                            echo "⚠  signal not available in post-failure handler " +
+                                "(Init stage may have failed before signal was loaded)."
+                        }
+                    }
                 } else {
                     echo """
                     ✅ All tests passed.

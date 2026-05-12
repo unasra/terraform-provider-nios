@@ -1,0 +1,244 @@
+name: CI via Jenkins (push-based)
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+# Only one pipeline per branch at a time; cancel outdated runs
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pipeline:
+    name: Jenkins pipeline
+    runs-on: ubuntu-latest       # or self-hosted — either works since Jenkins pushes to GitHub
+
+    # Hard ceiling on the entire job (adjust to your longest expected pipeline)
+    timeout-minutes: 60
+
+    steps:
+      # ------------------------------------------------------------------ #
+      # 1.  Prepare the Gist signal channel
+      #     Creates (or resets) a Gist file that Jenkins will write into.
+      #     The file is keyed by run-id so parallel runs don't collide.
+      # ------------------------------------------------------------------ #
+      - name: Create signal Gist
+        id: gist
+        env:
+          GH_TOKEN: ${{ secrets.GH_SIGNAL_TOKEN }}   # fine-grained PAT with gist scope
+        run: |
+          # Initial payload — Jenkins will overwrite this with stage signals
+          PAYLOAD=$(python3 -c "
+          import json, sys
+          print(json.dumps({
+              'run_id':    '${{ github.run_id }}',
+              'sha':       '${{ github.sha }}',
+              'ref':       '${{ github.ref_name }}',
+              'status':    'waiting',
+              'stage':     '',
+              'message':   '',
+              'artifacts': []
+          }))
+          ")
+
+          RESPONSE=$(curl -sS -X POST \
+            -H "Authorization: token $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/gists \
+            -d "$(python3 -c "
+          import json
+          print(json.dumps({
+              'description': 'ci-signal-${{ github.run_id }}',
+              'public': False,
+              'files': {
+                  'ci-signal-${{ github.run_id }}.json': {
+                      'content': $(echo "$PAYLOAD" | python3 -c "import json,sys; print(json.dumps(sys.stdin.read()))")
+                  }
+              }
+          }))
+          ")")
+
+          GIST_ID=$(echo "$RESPONSE" | python3 -c "
+          import sys, json
+          try:
+              data = json.load(sys.stdin)
+              if 'id' in data:
+                  print(data['id'])
+              else:
+                  print(f'Error: GitHub API response missing id field. Response: {data}', file=sys.stderr)
+                  sys.exit(1)
+          except json.JSONDecodeError as e:
+              print(f'Error: Invalid JSON response from GitHub API: {e}', file=sys.stderr)
+              sys.exit(1)
+          ")
+          
+          if [ -z "$GIST_ID" ]; then
+            echo "::error::Failed to create signal Gist. Check if GH_SIGNAL_TOKEN has 'gist' scope."
+            exit 1
+          fi
+          
+          echo "gist_id=$GIST_ID" >> "$GITHUB_OUTPUT"
+          echo "Signal Gist created: https://gist.github.com/$GIST_ID"
+
+#      # ------------------------------------------------------------------ #
+#      # 2.  Trigger Jenkins
+#      #     Passes the Gist ID and a PAT so Jenkins can write back signals.
+#      # ------------------------------------------------------------------ #
+#      - name: Trigger Jenkins job
+#        env:
+#          JENKINS_URL:   ${{ secrets.JENKINS_URL }}
+#          JENKINS_USER:  ${{ secrets.JENKINS_USER }}
+#          JENKINS_TOKEN: ${{ secrets.JENKINS_API_TOKEN }}
+#          JOB_NAME:      ${{ secrets.JENKINS_JOB_NAME }}
+#          GH_SIGNAL_TOKEN: ${{ secrets.GH_SIGNAL_TOKEN }}
+#          GIST_ID:       ${{ steps.gist.outputs.gist_id }}
+#        run: |
+#          HTTP_CODE=$(curl -sS -o /dev/null -w "%{http_code}" \
+#            -u "$JENKINS_USER:$JENKINS_TOKEN" \
+#            --data-urlencode "GIT_COMMIT=${{ github.sha }}" \
+#            --data-urlencode "GIT_BRANCH=${{ github.ref_name }}" \
+#            --data-urlencode "SIGNAL_GIST_ID=$GIST_ID" \
+#            --data-urlencode "SIGNAL_TOKEN=$GH_SIGNAL_TOKEN" \
+#            "${JENKINS_URL}/job/${JOB_NAME}/buildWithParameters")
+#
+#          if [[ "$HTTP_CODE" != "201" && "$HTTP_CODE" != "200" ]]; then
+#            echo "::error::Jenkins returned HTTP $HTTP_CODE — check URL, credentials, and job name."
+#            exit 1
+#          fi
+#          echo "Jenkins job triggered (HTTP $HTTP_CODE)"
+
+      # ------------------------------------------------------------------ #
+      # 3.  Wait for env-setup stage signal
+      # ------------------------------------------------------------------ #
+      - name: Wait — env setup
+        env:
+          GH_TOKEN:  ${{ secrets.GH_SIGNAL_TOKEN }}
+          GIST_ID:   ${{ steps.gist.outputs.gist_id }}
+          RUN_ID:    ${{ github.run_id }}
+          STAGE_NAME: env-setup
+          TIMEOUT_SECONDS: "600"     # 10 min for env setup
+        run: python3 .github/scripts/wait_for_signal.py
+
+      # ------------------------------------------------------------------ #
+      # 4.  Wait for tests-complete signal (Jenkins sends artifact URLs here)
+      # ------------------------------------------------------------------ #
+      - name: Wait — tests complete
+        env:
+          GH_TOKEN:  ${{ secrets.GH_SIGNAL_TOKEN }}
+          GIST_ID:   ${{ steps.gist.outputs.gist_id }}
+          RUN_ID:    ${{ github.run_id }}
+          STAGE_NAME: tests-complete
+          TIMEOUT_SECONDS: "2400"    # 40 min for tests
+        run: python3 .github/scripts/wait_for_signal.py
+
+      # ------------------------------------------------------------------ #
+      # 5.  Download JUnit XML artifacts (URLs embedded in the signal)
+      # ------------------------------------------------------------------ #
+      - name: Download test artifacts
+        env:
+          JENKINS_USER:  ${{ secrets.JENKINS_USER }}
+          JENKINS_TOKEN: ${{ secrets.JENKINS_API_TOKEN }}
+          GH_TOKEN:      ${{ secrets.GH_SIGNAL_TOKEN }}
+          GIST_ID:       ${{ steps.gist.outputs.gist_id }}
+          RUN_ID:        ${{ github.run_id }}
+        run: |
+          mkdir -p test-results
+
+          # Read artifact URLs from the final signal payload
+          python3 - <<'EOF'
+          import os, json, urllib.request, urllib.error, base64
+
+          gist_id = os.environ["GIST_ID"]
+          run_id  = os.environ["RUN_ID"]
+          token   = os.environ["GH_TOKEN"]
+          j_user  = os.environ["JENKINS_USER"]
+          j_tok   = os.environ["JENKINS_TOKEN"]
+
+          # Fetch the current gist content
+          req = urllib.request.Request(
+              f"https://api.github.com/gists/{gist_id}",
+              headers={"Authorization": f"token {token}",
+                       "Accept": "application/vnd.github+json"})
+          with urllib.request.urlopen(req) as r:
+              gist = json.load(r)
+
+          fname   = f"ci-signal-{run_id}.json"
+          content = list(gist["files"].values())[0]["content"]
+          signal  = json.loads(content)
+
+          artifacts = signal.get("artifacts", [])
+          if not artifacts:
+              print("::warning::No artifact URLs in signal payload.")
+          
+          creds = base64.b64encode(f"{j_user}:{j_tok}".encode()).decode()
+
+          for url in artifacts:
+              filename = url.split("/")[-1].split("?")[0]
+              dest     = f"test-results/{filename}"
+              print(f"Downloading {filename} ...")
+              dl_req = urllib.request.Request(url, headers={"Authorization": f"Basic {creds}"})
+              with urllib.request.urlopen(dl_req) as r, open(dest, "wb") as f:
+                  f.write(r.read())
+              print(f"  → {dest}")
+
+          print(f"Downloaded {len(artifacts)} artifact(s).")
+          EOF
+
+      # ------------------------------------------------------------------ #
+      # 6.  Parse JUnit XML → job summary
+      # ------------------------------------------------------------------ #
+      - name: Parse results and write summary
+        run: |
+          python3 .github/scripts/parse_junit.py \
+            --results-dir  test-results \
+            --summary-file "$GITHUB_STEP_SUMMARY" \
+            --output-file  test-results/summary.json
+
+      # ------------------------------------------------------------------ #
+      # 7.  Upload artifacts (always, so they survive a failed run)
+      # ------------------------------------------------------------------ #
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-${{ github.sha }}
+          path: test-results/
+          retention-days: 30
+
+      # ------------------------------------------------------------------ #
+      # 8.  Evaluate result — exit 1 if any tests failed
+      # ------------------------------------------------------------------ #
+      - name: Evaluate result
+        run: |
+          python3 - <<'EOF'
+          import json, sys
+          try:
+              with open("test-results/summary.json") as f:
+                  d = json.load(f)
+          except FileNotFoundError:
+              print("::error::summary.json not found — artifact download may have failed.")
+              sys.exit(1)
+
+          if d["failures"] > 0 or d["errors"] > 0:
+              print(f"::error::{d['failures']} test failure(s), {d['errors']} error(s). See job summary for details.")
+              sys.exit(1)
+
+          print(f"All {d['total']} tests passed.")
+          EOF
+
+      # ------------------------------------------------------------------ #
+      # 9.  Clean up the signal Gist
+      # ------------------------------------------------------------------ #
+      - name: Cleanup signal Gist
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GH_SIGNAL_TOKEN }}
+          GIST_ID:  ${{ steps.gist.outputs.gist_id }}
+        run: |
+          curl -sS -X DELETE \
+            -H "Authorization: token $GH_TOKEN" \
+            "https://api.github.com/gists/$GIST_ID" && \
+          echo "Signal Gist deleted." || echo "::warning::Could not delete signal Gist $GIST_ID"
