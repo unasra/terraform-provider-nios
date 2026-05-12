@@ -21,6 +21,12 @@ jobs:
 
     steps:
       # ------------------------------------------------------------------ #
+      # 0.  Checkout repository (needed for accessing .github/scripts)
+      # ------------------------------------------------------------------ #
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ------------------------------------------------------------------ #
       # 1.  Prepare the Gist signal channel
       #     Creates (or resets) a Gist file that Jenkins will write into.
       #     The file is keyed by run-id so parallel runs don't collide.
