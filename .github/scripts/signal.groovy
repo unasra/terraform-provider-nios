@@ -29,8 +29,8 @@
 private void _push(Map payload) {
     def gistId  = params.SIGNAL_GIST_ID?.trim() ? env.SIGNAL_GIST_ID ?: ''
     def token   = params.SIGNAL_TOKEN?.trim() ? env.SIGNAL_TOKEN ?: ''
-    def runId   = params.SIGNAL_RUN_ID?.trim() ?: env.SIGNAL_RUN_ID ?: ''
-    def sha     = params.GIT_COMMIT?.trim()    ?: env.GIT_COMMIT    ?: ''
+    def runId   = params.SIGNAL_RUN_ID?.trim() ? env.SIGNAL_RUN_ID ?: ''
+    def sha     = params.GIT_COMMIT?.trim()    ? env.GIT_COMMIT    ?: ''
 
     if (!gistId || !token) {
         echo "⚠  SIGNAL_GIST_ID or SIGNAL_TOKEN not set — skipping signal push."
