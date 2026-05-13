@@ -27,8 +27,8 @@
  * Uses a simple sh curl — no plugins required.
  */
 private void _push(Map payload) {
-    def gistId  = params.SIGNAL_GIST_ID?.trim()
-    def token   = params.SIGNAL_TOKEN?.trim()
+    def gistId  = params.SIGNAL_GIST_ID?.trim() ? env.SIGNAL_GIST_ID ?: ''
+    def token   = params.SIGNAL_TOKEN?.trim() ? env.SIGNAL_TOKEN ?: ''
     def runId   = params.SIGNAL_RUN_ID?.trim() ?: env.SIGNAL_RUN_ID ?: ''
     def sha     = params.GIT_COMMIT?.trim()    ?: env.GIT_COMMIT    ?: ''
 
