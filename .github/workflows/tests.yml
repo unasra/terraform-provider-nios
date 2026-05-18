@@ -5,7 +5,7 @@ on:
   push:
     branches:
       - main
-      - test_action_910
+      - test_actions_910
 
 # Only one pipeline per branch at a time; cancel outdated runs
 concurrency:
