@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - main
+      - nios_v9.1.0
 
 # Only one pipeline per branch at a time; cancel outdated runs
 concurrency:
