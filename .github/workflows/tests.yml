@@ -1,4 +1,4 @@
-name: Integration Tests
+name: CI via Jenkins (push-based)
 
 on:
   workflow_dispatch:
@@ -13,7 +13,7 @@ concurrency:
 
 jobs:
   pipeline:
-    name: Integration Test Pipeline
+    name: Jenkins pipeline
     runs-on: ubuntu-latest
 
     # Timeout on the entire job
