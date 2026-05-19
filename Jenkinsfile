@@ -36,6 +36,7 @@ node('Cloud-test1-172.28.81.12-label') {
             env.NIOS_HOST_URL     = params.GM_URL
             env.NIOS_MEMBER_URL   = params.MEMBER_URL
             env.NIOS_WAPI_VERSION = 'v2.13.6'
+            env.TF_LOG            = 'DEBUG'
             env.TF_ACC            = '1'
             env.GO_VERSION        = '1.25.1'
             env.TF_VERSION        = params.TF_VERSION
