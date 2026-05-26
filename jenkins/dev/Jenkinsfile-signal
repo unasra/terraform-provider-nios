@@ -3,8 +3,8 @@ properties([
     parameters([
         string(name: 'GM_URL',     defaultValue: 'https://host-a.infoblox.com', description: 'URL For the GRID Master'),
         string(name: 'MEMBER_URL', defaultValue: 'https://host-b.infoblox.com', description: 'URL for the GRID Member'),
-        string(name: 'TF_VERSION', defaultValue: '1.14.1',                       description: 'Terraform version to install e.g. 1.8.0'),
-        string(name: 'REPO_USER',  defaultValue: 'infobloxopen',                      description: 'GitHub repository owner/user (for using forks)'),
+        string(name: 'TF_VERSION', defaultValue: '1.14.1',                description: 'Terraform version to install e.g. 1.8.0'),
+        string(name: 'REPO_USER',  defaultValue: 'infobloxopen',          description: 'GitHub repository owner/user (for using forks)'),
         string(name: 'BRANCH',     defaultValue: 'main',                  description: 'Branch name to checkout'),
         booleanParam(name: 'ENABLE_DEBUG_LOGGING', defaultValue: false,   description: 'Enable DEBUG level Terraform logging (TF_LOG=DEBUG)'),
 
@@ -51,6 +51,8 @@ node('Cloud-test1-172.28.81.12-label') {
     timestamps {
         timeout(time: 240, unit: 'MINUTES') {
 
+            def signal = null
+
             // ── Environment variables ─────────────────────────────────────────
             env.NIOS_HOST_URL     = params.GM_URL
             env.NIOS_MEMBER_URL   = params.MEMBER_URL
@@ -60,12 +62,40 @@ node('Cloud-test1-172.28.81.12-label') {
             env.GO_VERSION        = '1.25.3'
             env.TF_VERSION        = params.TF_VERSION
             env.PATH              = "${env.WORKSPACE}/tools/go/bin:/usr/local/go/bin:${env.HOME}/go/bin:${env.WORKSPACE}/bin:${env.PATH}"
+            env.TEST_RESULTS_DIR = 'test-results'
+            env.JUNIT_GLOB       = 'test-results/**-junit.xml'
 
             try {
 
                 // ── Checkout ──────────────────────────────────────────────────
                 stage('Checkout') {
                     git url: "https://github.com/${params.REPO_USER}/terraform-provider-nios.git", branch: params.BRANCH
+
+                    // Explicitly capture SHA — the simple `git` step does not
+                    // reliably populate env.GIT_COMMIT in the same Groovy scope.
+                    env.GIT_COMMIT = sh(script: 'git rev-parse HEAD', returnStdout: true).trim()
+                    echo "Building commit: ${env.GIT_COMMIT}"
+
+                    // Load signal credentials early so we can immediately signal job start
+                    withCredentials([
+                        string(
+                            credentialsId: 'tf_ut_store_id',
+                            variable: 'GIST_ID_VAL'
+                        ),
+                        string(
+                            credentialsId: 'tf_ut_signal_token',
+                            variable: 'SIGNAL_TOKEN_VAL'
+                        )
+                    ]) {
+                        env.SIGNAL_GIST_ID = GIST_ID_VAL
+                        env.SIGNAL_TOKEN   = SIGNAL_TOKEN_VAL
+                    }
+
+                    // Load the signal helper from the repo itself
+                    signal = load '.github/scripts/signal.groovy'
+
+                    // Notify GitHub Action that Jenkins has picked up this commit
+                    signal.started()
                 }
 
                 // ── Install toolchain ─────────────────────────────────────────
@@ -181,22 +211,33 @@ node('Cloud-test1-172.28.81.12-label') {
 
                 // ── Integration config ────────────────────────────────────────
                 stage('Integration config') {
-                    sh '''#!/bin/bash
-                        set -euo pipefail
+                    try {
+                        // ── YOUR SETUP STEPS GO HERE ──────────────────────
+                        sh '''#!/bin/bash
+                            set -euo pipefail
 
-                        rm -f pipeline.env integration_test_setup.log
-                        go run ./internal/testdata/integration_test_setup.go 2>&1 | tee integration_test_setup.log
+                            rm -f pipeline.env integration_test_setup.log
+                            go run ./internal/testdata/integration_test_setup.go 2>&1 | tee integration_test_setup.log
 
-                        if grep -E '(^|[[:space:]])Error( |:)' integration_test_setup.log >/dev/null; then
-                            echo "integration_test_setup.go reported an error."
-                            exit 1
-                        fi
+                            if grep -E '(^|[[:space:]])Error( |:)' integration_test_setup.log >/dev/null; then
+                                echo "integration_test_setup.go reported an error."
+                                exit 1
+                            fi
 
-                        if [ ! -s pipeline.env ]; then
-                            echo "pipeline.env was not generated or is empty."
-                            exit 1
-                        fi
-                    '''
+                            if [ ! -s pipeline.env ]; then
+                                echo "pipeline.env was not generated or is empty."
+                                exit 1
+                            fi
+                        '''
+                        // ─────────────────────────────────────────────────
+
+                        // Tell the Action this stage is done
+                        signal.success('env-setup', [message: 'Dependencies ready'])
+
+                    } catch (err) {
+                        signal.error('env-setup', "Environment setup failed: ${err.getMessage()}")
+                        error("Aborting pipeline — env setup failed: ${err.getMessage()}")
+                    }
 
                     // Inject pipeline.env into Jenkins env
                     def envVars = readFile('pipeline.env').trim().split('\n')
@@ -207,6 +248,7 @@ node('Cloud-test1-172.28.81.12-label') {
                         }
                     }
                 }
+                
 
                 // ── Test stages ───────────────────────────────────────────────
                 sh 'mkdir -p $WORKSPACE/test-results'
@@ -226,6 +268,19 @@ node('Cloud-test1-172.28.81.12-label') {
                 if (params.RUN_RPZ)             { runTestStage('rpz',             'internal/service/rpz',             '45m') } else { echo 'Skipping: rpz' }
                 if (params.RUN_SECURITY)        { runTestStage('security',        'internal/service/security',        '30m') } else { echo 'Skipping: security' }
                 if (params.RUN_SMARTFOLDER)     { runTestStage('smartfolder',     'internal/service/smartfolder',     '5m')  } else { echo 'Skipping: smartfolder' }
+
+                // ── Signal tests complete ─────────────────────────────────────
+                def junitOutput = sh(script: 'find test-results -name "*-junit.xml" 2>/dev/null || true', returnStdout: true).trim()
+                def junitFileMap = [:]
+                if (junitOutput) {
+                    junitOutput.split('\n').each { path ->
+                        def fname = path.tokenize('/')[-1]
+                        junitFileMap[fname] = readFile(path)
+                    }
+                }
+                signal.success('tests-complete', [
+                    message    : currentBuild.result == 'FAILURE' ? 'Tests completed with failures — check artifacts' : 'All tests passed',
+                    junit_files: junitFileMap])
 
             } catch (err) {
                 currentBuild.result = 'FAILURE'
@@ -248,6 +303,17 @@ node('Cloud-test1-172.28.81.12-label') {
                     Grid Master: ${env.NIOS_HOST_URL}
                     Grid Member: ${env.NIOS_MEMBER_URL}
                     """
+                    try {
+                        def stageName = env.STAGE_NAME ?: 'unknown'
+                        signal.error(
+                            stageName,
+                            "Jenkins pipeline failed unexpectedly at stage '${stageName}'. " +
+                            "Check Jenkins logs: ${env.BUILD_URL}console"
+                        )
+                    } catch (MissingPropertyException ignored) {
+                        echo "⚠  signal not available in post-failure handler " +
+                            "(Init stage may have failed before signal was loaded)."
+                    }
                 } else {
                     echo """
                     ✅ All tests passed.
