@@ -171,7 +171,7 @@ node('Cloud-test1-172.28.81.12-label') {
 
                         # Copy all files from Outbound5 templates
                         OB5_SRC="${QA_REPO_DIR}/WAPI_PyTest/suites/Outbound5/Outbound5_templates"
-                        find "${OB5_SRC}" -maxdepth 1 -type f -exec cp {} "${DEST}/" \;
+                        find "${OB5_SRC}" -maxdepth 1 -type f -exec cp {} "${DEST}/" \\;
                         echo "Copied all Outbound5 templates → ${DEST}/"
 
                         echo "Ecosystem templates ready in ${DEST}:"
