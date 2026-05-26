@@ -153,7 +153,7 @@ node('Cloud-test1-172.28.81.12-label') {
 
                         git -C "${QA_REPO_DIR}" init -q
                         git -C "${QA_REPO_DIR}" remote add origin \
-                            "https://github.com/Infoblox-CTO/qa-nios-api-tests.git"
+                            "git@github.com:Infoblox-CTO/qa-nios-api-tests.git"
 
                         # Sparse checkout — fetch only the two template directories
                         git -C "${QA_REPO_DIR}" config core.sparseCheckout true
