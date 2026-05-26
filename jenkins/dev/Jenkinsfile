@@ -157,10 +157,10 @@ node('Cloud-test1-172.28.81.12-label') {
 
                         # Sparse checkout — fetch only the two template directories
                         git -C "${QA_REPO_DIR}" config core.sparseCheckout true
-                        printf \
-                            "WAPI_PyTest/suites/Outbound6_Cisco_ISE_Endpoint/Cisco_ISE_templates/\n" \
-                            "WAPI_PyTest/suites/Outbound5/Outbound5_templates/\n" \
-                            > "${QA_REPO_DIR}/.git/info/sparse-checkout"
+                        {
+                            echo "WAPI_PyTest/suites/Outbound6_Cisco_ISE_Endpoint/Cisco_ISE_templates/"
+                            echo "WAPI_PyTest/suites/Outbound5/Outbound5_templates/"
+                        } > "${QA_REPO_DIR}/.git/info/sparse-checkout"
 
                         git -C "${QA_REPO_DIR}" pull --depth=1 origin master
 
@@ -171,7 +171,7 @@ node('Cloud-test1-172.28.81.12-label') {
 
                         # Copy all files from Outbound5 templates
                         OB5_SRC="${QA_REPO_DIR}/WAPI_PyTest/suites/Outbound5/Outbound5_templates"
-                        cp "${OB5_SRC}"/* "${DEST}/"
+                        find "${OB5_SRC}" -maxdepth 1 -type f -exec cp {} "${DEST}/" \;
                         echo "Copied all Outbound5 templates → ${DEST}/"
 
                         echo "Ecosystem templates ready in ${DEST}:"
