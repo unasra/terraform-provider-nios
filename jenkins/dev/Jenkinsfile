@@ -162,7 +162,7 @@ node('Cloud-test1-172.28.81.12-label') {
                             "WAPI_PyTest/suites/Outbound5/Outbound5_templates/\n" \
                             > "${QA_REPO_DIR}/.git/info/sparse-checkout"
 
-                        git -C "${QA_REPO_DIR}" pull --depth=1 origin main
+                        git -C "${QA_REPO_DIR}" pull --depth=1 origin master
 
                         # Copy IPAM_PxgridEvent.json from Cisco ISE templates
                         ISE_SRC="${QA_REPO_DIR}/WAPI_PyTest/suites/Outbound6_Cisco_ISE_Endpoint/Cisco_ISE_templates"
