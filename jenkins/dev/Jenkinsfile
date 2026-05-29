@@ -151,27 +151,24 @@ node('Cloud-test1-172.28.81.12-label') {
                         QA_REPO="git@github.com:Infoblox-CTO/qa-nios-api-tests.git"
                         CACHE_DIR="${HOME}/.cache/qa-nios-api-tests-sparse"
 
-                        SPARSE_PATHS=(
-                            "WAPI_PyTest/suites/Outbound6_Cisco_ISE_Endpoint/Cisco_ISE_templates/"
-                            "WAPI_PyTest/suites/Outbound5/Outbound5_templates/"
-                            "fr/Core_DDI/regression/LRT/Security_Service_Provider/Security_Outbound-3/Event_templates/"
-                        )
-
                         if [ -d "${CACHE_DIR}/.git" ]; then
                             echo "Using cached repo at ${CACHE_DIR}, fetching latest..."
                             git -C "${CACHE_DIR}" fetch --depth=1 origin master
                             git -C "${CACHE_DIR}" checkout FETCH_HEAD
                         else
-                            echo "No cache found, cloning with partial clone..."
+                            echo "No cache found, performing initial sparse clone..."
                             mkdir -p "${CACHE_DIR}"
-                            git clone \
-                                --filter=blob:none \
-                                --sparse \
-                                --depth=1 \
-                                --no-checkout \
-                                "${QA_REPO}" "${CACHE_DIR}"
-                            git -C "${CACHE_DIR}" sparse-checkout set "${SPARSE_PATHS[@]}"
-                            git -C "${CACHE_DIR}" checkout
+                            git -C "${CACHE_DIR}" init -q
+                            git -C "${CACHE_DIR}" remote add origin "${QA_REPO}"
+                            git -C "${CACHE_DIR}" config core.sparseCheckout true
+                            {
+                                echo "WAPI_PyTest/suites/Outbound6_Cisco_ISE_Endpoint/Cisco_ISE_templates/"
+                                echo "WAPI_PyTest/suites/Outbound5/Outbound5_templates/"
+                                echo "fr/Core_DDI/regression/LRT/Security_Service_Provider/Security_Outbound-3/Event_templates/"
+                            } > "${CACHE_DIR}/.git/info/sparse-checkout"
+                            git -C "${CACHE_DIR}" fetch --depth=1 --filter=blob:none origin master \
+                                2>/dev/null || git -C "${CACHE_DIR}" fetch --depth=1 origin master
+                            git -C "${CACHE_DIR}" checkout FETCH_HEAD
                         fi
 
                         # Copy IPAM_PxgridEvent.json from Cisco ISE templates
