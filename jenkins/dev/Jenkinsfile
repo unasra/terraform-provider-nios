@@ -174,6 +174,11 @@ node('Cloud-test1-172.28.81.12-label') {
                         find "${OB5_SRC}" -maxdepth 1 -type f -exec cp {} "${DEST}/" \\;
                         echo "Copied all Outbound5 templates → ${DEST}/"
 
+                        # Copy Security-Outbound3 event template
+                        SEC_SRC="${QA_REPO_DIR}/fr/Core_DDI/regression/LRT/Security_Service_Provider/Security_Outbound-3/Event_templates/event_template_schema_default.json"
+                        cp "${SEC_SRC}" "${DEST}/"
+                        echo "Copied Security-Outbound3 event template → ${DEST}/"
+
                         echo "Ecosystem templates ready in ${DEST}:"
                         ls -1 "${DEST}"
                     '''
