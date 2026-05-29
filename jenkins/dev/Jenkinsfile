@@ -221,7 +221,7 @@ node('Cloud-test1-172.28.81.12-label') {
                 }
 
                 // ── Test stages ───────────────────────────────────────────────
-                sh 'mkdir -p $WORKSPACE/test-results'
+                sh 'rm -rf $WORKSPACE/test-results && mkdir -p $WORKSPACE/test-results'
                 if (params.RUN_ACL)             { runTestStage('acl',             'internal/service/acl',             '5m')  } else { echo 'Skipping: acl' }
                 if (params.RUN_CLOUD)           { runTestStage('cloud',           'internal/service/cloud',           '5m')  } else { echo 'Skipping: cloud' }
                 if (params.RUN_DHCP)            { runTestStage('dhcp',            'internal/service/dhcp',            '80m') } else { echo 'Skipping: dhcp' }
