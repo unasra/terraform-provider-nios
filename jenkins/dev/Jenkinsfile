@@ -160,6 +160,7 @@ node('Cloud-test1-172.28.81.12-label') {
                         {
                             echo "WAPI_PyTest/suites/Outbound6_Cisco_ISE_Endpoint/Cisco_ISE_templates/"
                             echo "WAPI_PyTest/suites/Outbound5/Outbound5_templates/"
+                            echo "fr/Core_DDI/regression/LRT/Security_Service_Provider/Security_Outbound-3/Event_templates/"
                         } > "${QA_REPO_DIR}/.git/info/sparse-checkout"
 
                         git -C "${QA_REPO_DIR}" pull --depth=1 origin master
