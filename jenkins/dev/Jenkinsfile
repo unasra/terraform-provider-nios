@@ -148,35 +148,44 @@ node('Cloud-test1-172.28.81.12-label') {
                         DEST="${WORKSPACE}/internal/testdata/nios_ecosystem_templates"
                         mkdir -p "${DEST}"
 
-                        QA_REPO_DIR=$(mktemp -d)
-                        trap "rm -rf ${QA_REPO_DIR}" EXIT
+                        QA_REPO="git@github.com:Infoblox-CTO/qa-nios-api-tests.git"
+                        CACHE_DIR="${HOME}/.cache/qa-nios-api-tests-sparse"
 
-                        git -C "${QA_REPO_DIR}" init -q
-                        git -C "${QA_REPO_DIR}" remote add origin \
-                            "git@github.com:Infoblox-CTO/qa-nios-api-tests.git"
+                        SPARSE_PATHS=(
+                            "WAPI_PyTest/suites/Outbound6_Cisco_ISE_Endpoint/Cisco_ISE_templates/"
+                            "WAPI_PyTest/suites/Outbound5/Outbound5_templates/"
+                            "fr/Core_DDI/regression/LRT/Security_Service_Provider/Security_Outbound-3/Event_templates/"
+                        )
 
-                        # Sparse checkout — fetch only the two template directories
-                        git -C "${QA_REPO_DIR}" config core.sparseCheckout true
-                        {
-                            echo "WAPI_PyTest/suites/Outbound6_Cisco_ISE_Endpoint/Cisco_ISE_templates/"
-                            echo "WAPI_PyTest/suites/Outbound5/Outbound5_templates/"
-                            echo "fr/Core_DDI/regression/LRT/Security_Service_Provider/Security_Outbound-3/Event_templates/"
-                        } > "${QA_REPO_DIR}/.git/info/sparse-checkout"
-
-                        git -C "${QA_REPO_DIR}" pull --depth=1 origin master
+                        if [ -d "${CACHE_DIR}/.git" ]; then
+                            echo "Using cached repo at ${CACHE_DIR}, fetching latest..."
+                            git -C "${CACHE_DIR}" fetch --depth=1 origin master
+                            git -C "${CACHE_DIR}" checkout FETCH_HEAD
+                        else
+                            echo "No cache found, cloning with partial clone..."
+                            mkdir -p "${CACHE_DIR}"
+                            git clone \
+                                --filter=blob:none \
+                                --sparse \
+                                --depth=1 \
+                                --no-checkout \
+                                "${QA_REPO}" "${CACHE_DIR}"
+                            git -C "${CACHE_DIR}" sparse-checkout set "${SPARSE_PATHS[@]}"
+                            git -C "${CACHE_DIR}" checkout
+                        fi
 
                         # Copy IPAM_PxgridEvent.json from Cisco ISE templates
-                        ISE_SRC="${QA_REPO_DIR}/WAPI_PyTest/suites/Outbound6_Cisco_ISE_Endpoint/Cisco_ISE_templates"
+                        ISE_SRC="${CACHE_DIR}/WAPI_PyTest/suites/Outbound6_Cisco_ISE_Endpoint/Cisco_ISE_templates"
                         cp "${ISE_SRC}/IPAM_PxgridEvent.json" "${DEST}/"
                         echo "Copied IPAM_PxgridEvent.json → ${DEST}/"
 
                         # Copy all files from Outbound5 templates
-                        OB5_SRC="${QA_REPO_DIR}/WAPI_PyTest/suites/Outbound5/Outbound5_templates"
+                        OB5_SRC="${CACHE_DIR}/WAPI_PyTest/suites/Outbound5/Outbound5_templates"
                         find "${OB5_SRC}" -maxdepth 1 -type f -exec cp {} "${DEST}/" \\;
                         echo "Copied all Outbound5 templates → ${DEST}/"
 
                         # Copy Security-Outbound3 event template
-                        SEC_SRC="${QA_REPO_DIR}/fr/Core_DDI/regression/LRT/Security_Service_Provider/Security_Outbound-3/Event_templates/event_template_schema_default.json"
+                        SEC_SRC="${CACHE_DIR}/fr/Core_DDI/regression/LRT/Security_Service_Provider/Security_Outbound-3/Event_templates/event_template_schema_default.json"
                         cp "${SEC_SRC}" "${DEST}/"
                         echo "Copied Security-Outbound3 event template → ${DEST}/"
 
