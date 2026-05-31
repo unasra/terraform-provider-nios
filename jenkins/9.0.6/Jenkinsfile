@@ -228,7 +228,7 @@ node('Cloud-test1-172.28.81.12-label') {
                 // ── Post-build actions (always run) ───────────────────────────
                 stage('Cleanup') {
                     echo 'Running cleanup...'
-                    //sh 'go run ./internal/testdata/integration_test_cleanup.go || true'
+                    sh 'go run ./internal/testdata/integration_test_cleanup.go || true'
                 }
 
                 // Publish JUnit + archive logs
