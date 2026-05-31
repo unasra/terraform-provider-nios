@@ -92,7 +92,7 @@ node('Cloud-test1-172.28.81.12-label') {
                     }
 
                     // Load the signal helper from the repo itself
-                    signal = load '.github/scripts/signal.groovy'
+                    signal = load '.github/actions/integration-tests/signal.groovy'
 
                     // Notify GitHub Action that Jenkins has picked up this commit
                     signal.started()
