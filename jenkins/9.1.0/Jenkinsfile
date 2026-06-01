@@ -1,8 +1,8 @@
-def GM_URL     = 'https://172.28.82.84'
-def MEMBER_URL = 'https://172.28.82.45'
+def GM_URL     = 'https://172.28.82.59'
+def MEMBER_URL = 'https://172.28.82.131'
 def TF_VERSION = '1.14.1'
 def REPO_USER  = 'unasra'
-def BRANCH     = 'nios_v9.1.0'
+def BRANCH     = 'main'
 def ENABLE_DEBUG_LOGGING = false
 
 def runTestStage(String name, String dir, String timeout) {
