@@ -7,6 +7,7 @@ properties([
         string(name: 'REPO_USER',  defaultValue: 'infobloxopen',                      description: 'GitHub repository owner/user (for using forks)'),
         string(name: 'BRANCH',     defaultValue: 'main',                  description: 'Branch name to checkout'),
         booleanParam(name: 'ENABLE_DEBUG_LOGGING', defaultValue: false,   description: 'Enable DEBUG level Terraform logging (TF_LOG=DEBUG)'),
+        booleanParam(name: 'RUN_SET_LICENSE',      defaultValue: false,   description: 'Set Licenses on Grids before tests'),
 
         // ── Test-group selection (all enabled by default) ─────────────────
         booleanParam(name: 'RUN_ACL',             defaultValue: true, description: 'Run ACL tests'),
@@ -138,6 +139,26 @@ node('Cloud-test1-172.28.81.12-label') {
                         env.NIOS_MEMBER_PASSWORD = HOST_B_PASS
                     }
                     echo "Credentials loaded for ${env.NIOS_HOST_URL} and ${env.NIOS_MEMBER_URL}"
+                }
+
+                // ── Set licenses on Grid Master and Grid Member ───────────────────
+                if (params.RUN_SET_LICENSE) {
+                    stage('Set License (Grid Master)') {
+                        def gmHost = params.GM_URL.replaceAll(/^https?:\/\//, '')
+                        sh """
+                            chmod +x "\$WORKSPACE/jenkins/dev/set_grid_master_license.sh"
+                            "\$WORKSPACE/jenkins/dev/set_grid_master_license.sh" '${gmHost}'
+                        """
+                    }
+                    stage('Set License (Grid Member)') {
+                        def memberHost = params.MEMBER_URL.replaceAll(/^https?:\/\//, '')
+                        sh """
+                            chmod +x "\$WORKSPACE/jenkins/dev/set_grid_member_license.sh"
+                            "\$WORKSPACE/jenkins/dev/set_grid_member_license.sh" '${memberHost}'
+                        """
+                    }
+                } else {
+                    echo 'Skipping: Set License (Grid Master + Grid Member)'
                 }
 
                 // ── Fetch ecosystem templates ─────────────────────────────────
