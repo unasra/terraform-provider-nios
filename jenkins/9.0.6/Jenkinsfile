@@ -1,7 +1,7 @@
 def GM_URL     = 'https://172.28.82.189'
 def MEMBER_URL = 'https://172.28.83.36'
 def TF_VERSION = '1.14.1'
-def REPO_USER  = 'unasra'
+def REPO_USER  = 'infobloxopen'
 def BRANCH     = 'main'
 def ENABLE_DEBUG_LOGGING = false
 
