@@ -46,95 +46,6 @@ def runTestStage(String name, String dir, String timeout) {
     }
 }
 
-def runLicenseSetup(String hostUrl, List<Integer> licenseNumbers) {
-    sh """#!/usr/bin/env bash
-        set -euo pipefail
-
-        if ! command -v expect &> /dev/null; then
-            echo "ERROR: 'expect' command not found. Please install expect." >&2
-            exit 1
-        fi
-
-        export HOST_URL='${hostUrl}'
-        export SSH_USER='admin'
-        export CERT='/import/qaddi/qa-cloud-init-keypair.pem'
-        export LICENSE_NUMBERS='${licenseNumbers.join(" ")}'
-
-        echo "Connecting to \\${SSH_USER}@\\${HOST_URL} ..."
-        echo ""
-        echo "License numbers to activate: \\${LICENSE_NUMBERS}"
-        echo ""
-        echo "──────────────────────────────────────"
-
-        expect <<'EXPECT_SCRIPT'
-set timeout 60
-log_user 1
-
-spawn ssh \
-    -i "$env(CERT)" \
-    -o StrictHostKeyChecking=no \
-    -o UserKnownHostsFile=/dev/null \
-    -o LogLevel=ERROR \
-    "$env(SSH_USER)@$env(HOST_URL)"
-
-expect {
-    timeout { send_user "\\nERROR: Timeout waiting for prompt\\n"; exit 1 }
-    eof { send_user "\\nERROR: Connection closed unexpectedly\\n"; exit 1 }
-    -re {[>#] }
-}
-
-foreach lic_num [split $env(LICENSE_NUMBERS) " "] {
-    send_user "\\n→ Activating license $lic_num\\n"
-    send "set temp_license\\r"
-
-    expect {
-        timeout { send_user "\\nERROR: Timeout waiting for license selection prompt\\n"; exit 1 }
-        "Select license" {
-            send "$lic_num\\r"
-        }
-    }
-
-    while {1} {
-        expect {
-            timeout { break }
-            -re {\\(y or n\\):} {
-                send "y\\r"
-            }
-            -re {[>#] } {
-                break
-            }
-        }
-    }
-}
-
-send_user "\\n→ Disabling strict CA cert check\\n"
-send "set disable_strict_ca_cert_check\\r"
-
-expect {
-    timeout { }
-    -re {\\(y or n\\):} {
-        send "y\\r"
-    }
-}
-
-expect -re {[>#] }
-send "exit\\r"
-expect eof
-EXPECT_SCRIPT
-
-        EXIT_CODE=\\$?
-        echo "──────────────────────────────────────"
-        echo ""
-
-        if [ \\$EXIT_CODE -eq 0 ]; then
-            echo "✅ License activation and CA cert check disable completed successfully for \\${HOST_URL}"
-        else
-            echo "❌ Command execution failed with exit code \\$EXIT_CODE" >&2
-            exit \\$EXIT_CODE
-        fi
-    """
-}
-
 
 // ── Main pipeline ─────────────────────────────────────────────────────────────
 node('Cloud-test1-172.28.81.12-label') {
@@ -234,11 +145,17 @@ node('Cloud-test1-172.28.81.12-label') {
                 if (params.RUN_SET_LICENSE) {
                     stage('Set License (Grid Master)') {
                         def gmHost = params.GM_URL.replaceAll(/^https?:\/\//, '')
-                        runLicenseSetup(gmHost, [8, 9, 11, 12, 13, 14, 15, 16])
+                        sh """
+                            chmod +x "\$WORKSPACE/jenkins/dev/set_grid_master_license.sh"
+                            "\$WORKSPACE/jenkins/dev/set_grid_master_license.sh" '${gmHost}'
+                        """
                     }
                     stage('Set License (Grid Member)') {
                         def memberHost = params.MEMBER_URL.replaceAll(/^https?:\/\//, '')
-                        runLicenseSetup(memberHost, [11, 12])
+                        sh """
+                            chmod +x "\$WORKSPACE/jenkins/dev/set_grid_member_license.sh"
+                            "\$WORKSPACE/jenkins/dev/set_grid_member_license.sh" '${memberHost}'
+                        """
                     }
                 } else {
                     echo 'Skipping: Set License (Grid Master + Grid Member)'
