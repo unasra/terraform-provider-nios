@@ -118,11 +118,12 @@ if {\$env(DISABLE_STRICT_CA_CERT_CHECK) == "1"} {
             send "y\\r"
         }
     }
+
+    expect -re {[>#] }
 } else {
     send_user "\\n→ Skipping strict CA cert check disable\\n"
 }
 
-expect -re {[>#] }
 send "exit\\r"
 expect eof
 EXPECT_SCRIPT
