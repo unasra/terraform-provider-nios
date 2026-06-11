@@ -60,9 +60,9 @@ def runLicenseSetup(String hostUrl, List<Integer> licenseNumbers) {
         export CERT='/import/qaddi/qa-cloud-init-keypair.pem'
         export LICENSE_NUMBERS='${licenseNumbers.join(" ")}'
 
-        echo "Connecting to \\${SSH_USER}@\\${HOST_URL} ..."
+        echo "Connecting to \${SSH_USER}@\${HOST_URL} ..."
         echo ""
-        echo "License numbers to activate: \\${LICENSE_NUMBERS}"
+        echo "License numbers to activate: \${LICENSE_NUMBERS}"
         echo ""
         echo "──────────────────────────────────────"
 
@@ -122,15 +122,15 @@ send "exit\\r"
 expect eof
 EXPECT_SCRIPT
 
-        EXIT_CODE=\\$?
+        EXIT_CODE=\$?
         echo "──────────────────────────────────────"
         echo ""
 
-        if [ \\$EXIT_CODE -eq 0 ]; then
-            echo "✅ License activation and CA cert check disable completed successfully for \\${HOST_URL}"
+        if [ \$EXIT_CODE -eq 0 ]; then
+            echo "✅ License activation and CA cert check disable completed successfully for \${HOST_URL}"
         else
-            echo "❌ Command execution failed with exit code \\$EXIT_CODE" >&2
-            exit \\$EXIT_CODE
+            echo "❌ Command execution failed with exit code \$EXIT_CODE" >&2
+            exit \$EXIT_CODE
         fi
     """
 }
