@@ -26,6 +26,7 @@ fi
 
 HOST_URL="$1"
 SSH_USER="admin"
+CERT="/import/qaddi/qa-cloud-init-keypair.pem"
 LICENSE_NUMBERS=(11 12)
 
 echo "Connecting to ${SSH_USER}@${HOST_URL} ..."
@@ -40,6 +41,7 @@ set timeout 60
 log_user 1
 
 spawn ssh \
+    -i "${CERT}" \
     -o StrictHostKeyChecking=no \
     -o UserKnownHostsFile=/dev/null \
     -o LogLevel=ERROR \
