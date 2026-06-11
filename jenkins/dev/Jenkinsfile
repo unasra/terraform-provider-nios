@@ -46,7 +46,7 @@ def runTestStage(String name, String dir, String timeout) {
     }
 }
 
-def runLicenseSetup(String hostUrl, List<Integer> licenseNumbers) {
+def runLicenseSetup(String hostUrl, List<Integer> licenseNumbers, boolean disableStrictCaCertCheck = true) {
     sh """#!/usr/bin/env bash
         set -euo pipefail
 
@@ -59,6 +59,7 @@ def runLicenseSetup(String hostUrl, List<Integer> licenseNumbers) {
         export SSH_USER='admin'
         export CERT='/import/qaddi/qa-cloud-init-keypair.pem'
         export LICENSE_NUMBERS='${licenseNumbers.join(" ")}'
+        export DISABLE_STRICT_CA_CERT_CHECK='${disableStrictCaCertCheck ? "1" : "0"}'
 
         echo "Connecting to \${SSH_USER}@\${HOST_URL} ..."
         echo ""
@@ -107,14 +108,18 @@ foreach lic_num [split \$env(LICENSE_NUMBERS) " "] {
     }
 }
 
-send_user "\\n→ Disabling strict CA cert check\\n"
-send "set disable_strict_ca_cert_check\\r"
+if {$env(DISABLE_STRICT_CA_CERT_CHECK) == "1"} {
+    send_user "\\n→ Disabling strict CA cert check\\n"
+    send "set disable_strict_ca_cert_check\\r"
 
-expect {
-    timeout { }
-    -re {\\(y or n\\):} {
-        send "y\\r"
+    expect {
+        timeout { }
+        -re {\\(y or n\\):} {
+            send "y\\r"
+        }
     }
+} else {
+    send_user "\\n→ Skipping strict CA cert check disable\\n"
 }
 
 expect -re {[>#] }
@@ -238,7 +243,7 @@ node('Cloud-test1-172.28.81.12-label') {
                     }
                     stage('Set License (Grid Member)') {
                         def memberHost = params.MEMBER_URL.replaceAll(/^https?:\/\//, '')
-                        runLicenseSetup(memberHost, [11, 12])
+                        runLicenseSetup(memberHost, [11, 12], false)
                     }
                 } else {
                     echo 'Skipping: Set License (Grid Master + Grid Member)'
