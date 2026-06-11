@@ -108,7 +108,7 @@ foreach lic_num [split \$env(LICENSE_NUMBERS) " "] {
     }
 }
 
-if {$env(DISABLE_STRICT_CA_CERT_CHECK) == "1"} {
+if {\$env(DISABLE_STRICT_CA_CERT_CHECK) == "1"} {
     send_user "\\n→ Disabling strict CA cert check\\n"
     send "set disable_strict_ca_cert_check\\r"
 
