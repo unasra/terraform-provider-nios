@@ -71,11 +71,11 @@ set timeout 60
 log_user 1
 
 spawn ssh \
-    -i "$env(CERT)" \
+    -i "\$env(CERT)" \
     -o StrictHostKeyChecking=no \
     -o UserKnownHostsFile=/dev/null \
     -o LogLevel=ERROR \
-    "$env(SSH_USER)@$env(HOST_URL)"
+    "\$env(SSH_USER)@\$env(HOST_URL)"
 
 expect {
     timeout { send_user "\\nERROR: Timeout waiting for prompt\\n"; exit 1 }
@@ -83,14 +83,14 @@ expect {
     -re {[>#] }
 }
 
-foreach lic_num [split $env(LICENSE_NUMBERS) " "] {
-    send_user "\\n→ Activating license $lic_num\\n"
+foreach lic_num [split \$env(LICENSE_NUMBERS) " "] {
+    send_user "\\n→ Activating license \$lic_num\\n"
     send "set temp_license\\r"
 
     expect {
         timeout { send_user "\\nERROR: Timeout waiting for license selection prompt\\n"; exit 1 }
         "Select license" {
-            send "$lic_num\\r"
+            send "\$lic_num\\r"
         }
     }
 
