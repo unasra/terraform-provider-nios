@@ -3,7 +3,7 @@ properties([
     parameters([
         string(name: 'GM_URL',     defaultValue: 'https://host-a.infoblox.com', description: 'URL For the GRID Master'),
         string(name: 'MEMBER_URL', defaultValue: 'https://host-b.infoblox.com', description: 'URL for the GRID Member'),
-        string(name: 'DISCOVERY_MEMBER_URL', defaultValue: 'https://host-c.infoblox.com', description: 'URL for the Discovery GRID Member'),
+        string(name: 'DISCOVERY_MEMBER_URL', defaultValue: '', description: 'URL for the Discovery GRID Member'),
         string(name: 'TF_VERSION', defaultValue: '1.14.1',                       description: 'Terraform version to install e.g. 1.8.0'),
         string(name: 'REPO_USER',  defaultValue: 'infobloxopen',                      description: 'GitHub repository owner/user (for using forks)'),
         string(name: 'BRANCH',     defaultValue: 'main',                  description: 'Branch name to checkout'),
