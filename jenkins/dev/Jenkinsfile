@@ -48,7 +48,12 @@ def runTestStage(String name, String dir, String timeout) {
 }
 
 def sendTestResultsMail(Map args) {
-    def buildStatus = args.buildStatus ?: 'SUCCESS'
+    def buildStatus  = args.buildStatus ?: 'SUCCESS'
+    def testAction   = currentBuild.testResultAction
+    def testsTotal   = testAction ? testAction.totalCount : 0
+    def testsFailed  = testAction ? testAction.failCount  : 0
+    def testsSkipped = testAction ? testAction.skipCount  : 0
+    def testsPassed  = testsTotal - testsFailed - testsSkipped
 
     def statusIcon = buildStatus == 'SUCCESS' ? '✅' : '❌'
     def subject    = "${statusIcon} [${buildStatus}] terraform-provider-nios – Build #${args.buildNumber} (${args.branch})"
@@ -63,9 +68,12 @@ def sendTestResultsMail(Map args) {
       <th align="left" style="padding: 6px 12px;">Field</th>
       <th align="left" style="padding: 6px 12px;">Value</th>
     </tr>
+    <tr><td><b>Job</b></td><td>${env.JOB_NAME}</td></tr>
     <tr><td><b>Branch</b></td><td>${args.branch}</td></tr>
     <tr><td><b>Build #</b></td><td>${args.buildNumber}</td></tr>
     <tr><td><b>Duration</b></td><td>${args.duration}</td></tr>
+    <tr><td><b>Tests Passed</b></td><td style="color: green;">${testsPassed}</td></tr>
+    <tr><td><b>Tests Failed</b></td><td style="color: ${testsFailed > 0 ? 'red' : 'green'};">${testsFailed}</td></tr>
     <tr><td><b>Grid Master</b></td><td>${args.hostUrl}</td></tr>
     <tr><td><b>Grid Member</b></td><td>${args.memberUrl}</td></tr>
   </table>
@@ -76,9 +84,6 @@ def sendTestResultsMail(Map args) {
     &nbsp;|&nbsp;
     🖥️ <a href="${args.buildUrl}console">Console Output</a>
   </p>
-  <p style="color: #777; font-size: 12px;">
-    Raw test output (.txt) files are attached to this email.
-  </p>
 </body>
 </html>
 """
@@ -87,8 +92,7 @@ def sendTestResultsMail(Map args) {
         subject            : subject,
         body               : body,
         mimeType           : 'text/html',
-        recipientProviders : [requestor()],
-        attachmentsPattern : 'test-results/*.txt'
+        recipientProviders : [requestor()]
     )
     echo 'Test-results email sent to the build invoker.'
 }
