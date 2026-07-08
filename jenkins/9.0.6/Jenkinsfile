@@ -40,10 +40,29 @@ def sendTestResultsMail(Map args) {
         return
     }
 
-    def testAction   = currentBuild.testResultAction
-    def testsTotal   = testAction ? testAction.totalCount : 0
-    def testsFailed  = testAction ? testAction.failCount  : 0
-    def testsSkipped = testAction ? testAction.skipCount  : 0
+    // Parse JUnit XML files directly — sandbox-safe (no currentBuild.testResultAction)
+    def counts = sh(
+        script: '''python3 - <<'EOF'
+import glob, xml.etree.ElementTree as ET
+total, failed, skipped = 0, 0, 0
+for f in glob.glob("test-results/**-junit.xml"):
+    try:
+        root = ET.parse(f).getroot()
+        suites = [root] if root.tag == "testsuite" else root.findall("testsuite")
+        for ts in suites:
+            total   += int(ts.get("tests",    0))
+            failed  += int(ts.get("failures", 0)) + int(ts.get("errors", 0))
+            skipped += int(ts.get("skipped",  0))
+    except Exception:
+        pass
+print("{},{},{}".format(total, failed, skipped))
+EOF''',
+        returnStdout: true
+    ).trim()
+    def parts        = counts.tokenize(',')
+    def testsTotal   = parts[0].toInteger()
+    def testsFailed  = parts[1].toInteger()
+    def testsSkipped = parts[2].toInteger()
     def testsPassed  = testsTotal - testsFailed - testsSkipped
 
     def statusIcon = buildStatus == 'SUCCESS' ? '✅' : '❌'
