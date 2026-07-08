@@ -5,6 +5,8 @@ def TF_VERSION = '1.14.1'
 def REPO_USER  = 'infobloxopen'
 def BRANCH     = 'main'
 def ENABLE_DEBUG_LOGGING = false
+def EMAIL_RECIPIENTS     = 'unasra@infoblox.com,hgupta1@infoblox.com'      // comma-separated list of addresses; leave empty to skip email
+def EMAIL_ON_SUCCESS     = true    // set to false to only email on failure
 
 def runTestStage(String name, String dir, String timeout) {
     stage("Tests: ${name}") {
@@ -21,6 +23,68 @@ def runTestStage(String name, String dir, String timeout) {
             sh "go-junit-report < \$WORKSPACE/test-results/${name}.txt > \$WORKSPACE/test-results/${name}-junit.xml || true"
         }
     }
+}
+
+
+def sendTestResultsMail(Map args) {
+    def recipients = args.recipients?.trim()
+    if (!recipients) {
+        echo 'EMAIL_RECIPIENTS not set — skipping email notification.'
+        return
+    }
+
+    def buildStatus  = args.buildStatus ?: 'SUCCESS'
+    def onSuccess    = args.emailOnSuccess != false
+    if (buildStatus == 'SUCCESS' && !onSuccess) {
+        echo 'EMAIL_ON_SUCCESS is false and build succeeded — skipping email notification.'
+        return
+    }
+
+    def testAction   = currentBuild.testResultAction
+    def testsTotal   = testAction ? testAction.totalCount : 0
+    def testsFailed  = testAction ? testAction.failCount  : 0
+    def testsSkipped = testAction ? testAction.skipCount  : 0
+    def testsPassed  = testsTotal - testsFailed - testsSkipped
+
+    def statusIcon = buildStatus == 'SUCCESS' ? '✅' : '❌'
+    def subject    = "${statusIcon} [${buildStatus}] terraform-provider-nios – Build #${args.buildNumber} (${args.branch})"
+    def body       = """
+<html>
+<body style="font-family: Arial, sans-serif; font-size: 14px; color: #333;">
+  <h2>${statusIcon} Build <strong>${buildStatus}</strong>: terraform-provider-nios</h2>
+
+  <table border="1" cellpadding="6" cellspacing="0"
+         style="border-collapse: collapse; min-width: 480px;">
+    <tr style="background: #f5f5f5;">
+      <th align="left" style="padding: 6px 12px;">Field</th>
+      <th align="left" style="padding: 6px 12px;">Value</th>
+    </tr>
+    <tr><td><b>Job</b></td><td>${env.JOB_NAME}</td></tr>
+    <tr><td><b>Branch</b></td><td>${args.branch}</td></tr>
+    <tr><td><b>Build #</b></td><td>${args.buildNumber}</td></tr>
+    <tr><td><b>Duration</b></td><td>${args.duration}</td></tr>
+    <tr><td><b>Tests Passed</b></td><td style="color: green;">${testsPassed}</td></tr>
+    <tr><td><b>Tests Failed</b></td><td style="color: ${testsFailed > 0 ? 'red' : 'green'};">${testsFailed}</td></tr>
+    <tr><td><b>Grid Master</b></td><td>${args.hostUrl}</td></tr>
+    <tr><td><b>Grid Member</b></td><td>${args.memberUrl}</td></tr>
+  </table>
+
+  <br/>
+  <p>
+    📋 <a href="${args.buildUrl}testReport/">Full Test Report</a>
+    &nbsp;|&nbsp;
+    🖥️ <a href="${args.buildUrl}console">Console Output</a>
+  </p>
+</body>
+</html>
+"""
+    emailext(
+        subject          : subject,
+        body             : body,
+        mimeType         : 'text/html',
+        to               : recipients
+    )
+    echo "Test-results email sent to: ${recipients}"
 }
 
 
@@ -260,6 +324,21 @@ node('Cloud-test1-172.28.81.12-label') {
                     Grid Master: ${env.NIOS_HOST_URL}
                     Grid Member: ${env.NIOS_MEMBER_URL}
                     """
+                }
+
+                // ── Email notification ────────────────────────────────────
+                stage('Email Results') {
+                    sendTestResultsMail(
+                        recipients    : EMAIL_RECIPIENTS,
+                        emailOnSuccess: EMAIL_ON_SUCCESS,
+                        buildStatus   : currentBuild.result ?: 'SUCCESS',
+                        branch        : BRANCH,
+                        buildNumber   : env.BUILD_NUMBER,
+                        duration      : currentBuild.durationString,
+                        buildUrl      : env.BUILD_URL,
+                        hostUrl       : env.NIOS_HOST_URL,
+                        memberUrl     : env.NIOS_MEMBER_URL
+                    )
                 }
             }
 
