@@ -4,9 +4,9 @@ properties([
     ])
 ])
 
-def GM_URL     = 'https://172.28.83.239'
-def MEMBER_URL = 'https://172.28.83.27'
-def DISCOVERY_MEMBER_URL = 'https://172.28.83.157'
+def GM_URL     = 'https://172.28.82.220'
+def MEMBER_URL = 'https://172.28.82.76'
+def DISCOVERY_MEMBER_URL = 'https://172.28.82.137'
 def TF_VERSION = params.TF_VERSION ?: '1.14.1'
 def REPO_USER  = 'infobloxopen'
 def BRANCH     = 'main'

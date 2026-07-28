@@ -8,8 +8,8 @@ def GM_URL     = 'https://172.28.82.200'
 def MEMBER_URL = 'https://172.28.83.92'
 def DISCOVERY_MEMBER_URL = 'https://172.28.82.123'
 def TF_VERSION = params.TF_VERSION ?: '1.14.1'
-def REPO_USER  = 'unasra'
-def BRANCH     = 'test_910'
+def REPO_USER  = 'infobloxopen'
+def BRANCH     = 'nios_v9.1.0'
 def ENABLE_DEBUG_LOGGING = false
 def EMAIL_RECIPIENTS     = 'unasra@infoblox.com,hgupta1@infoblox.com'      // comma-separated list of addresses; leave empty to skip email
 def EMAIL_ON_SUCCESS     = true    // set to false to only email on failure
@@ -282,21 +282,21 @@ node('Cloud-test1-172.28.81.12-label') {
                 // ── Test stages ───────────────────────────────────────────────
                 sh 'mkdir -p $WORKSPACE/test-results'
                 runTestStage('acl',             'internal/service/acl',             '5m')
-//                 runTestStage('cloud',           'internal/service/cloud',           '5m')
-//                 runTestStage('dhcp',            'internal/service/dhcp',            '80m')
-//                 runTestStage('discovery',       'internal/service/discovery',       '10m')
-//                 runTestStage('dns',             'internal/service/dns',             '80m')
-//                 runTestStage('dtc',             'internal/service/dtc',             '30m')
-//                 runTestStage('grid',            'internal/service/grid',            '30m')
-//                 runTestStage('ipam',            'internal/service/ipam',            '80m')
-//                 runTestStage('microsoft',       'internal/service/microsoft',       '30m')
-//                 runTestStage('misc',            'internal/service/misc',            '30m')
-//                 runTestStage('notification',    'internal/service/notification',    '30m')
-//                 runTestStage('parentalcontrol', 'internal/service/parentalcontrol', '30m')
-//                 runTestStage('rir',             'internal/service/rir',             '5m')
-//                 runTestStage('rpz',             'internal/service/rpz',             '45m')
-//                 runTestStage('security',        'internal/service/security',        '30m')
-//                 runTestStage('smartfolder',     'internal/service/smartfolder',     '5m')
+                runTestStage('cloud',           'internal/service/cloud',           '5m')
+                runTestStage('dhcp',            'internal/service/dhcp',            '80m')
+                runTestStage('discovery',       'internal/service/discovery',       '10m')
+                runTestStage('dns',             'internal/service/dns',             '80m')
+                runTestStage('dtc',             'internal/service/dtc',             '30m')
+                runTestStage('grid',            'internal/service/grid',            '30m')
+                runTestStage('ipam',            'internal/service/ipam',            '80m')
+                runTestStage('microsoft',       'internal/service/microsoft',       '30m')
+                runTestStage('misc',            'internal/service/misc',            '30m')
+                runTestStage('notification',    'internal/service/notification',    '30m')
+                runTestStage('parentalcontrol', 'internal/service/parentalcontrol', '30m')
+                runTestStage('rir',             'internal/service/rir',             '5m')
+                runTestStage('rpz',             'internal/service/rpz',             '45m')
+                runTestStage('security',        'internal/service/security',        '30m')
+                runTestStage('smartfolder',     'internal/service/smartfolder',     '5m')
 
                 // ── Signal tests complete ─────────────────────────────────────
                 def junitOutput = sh(script: 'find test-results -name "*-junit.xml" 2>/dev/null || true', returnStdout: true).trim()
