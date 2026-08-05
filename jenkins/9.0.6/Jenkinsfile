@@ -11,7 +11,7 @@ def TF_VERSION = params.TF_VERSION ?: '1.14.1'
 def REPO_USER  = 'infobloxopen'
 def BRANCH     = 'main'
 def ENABLE_DEBUG_LOGGING = false
-def EMAIL_RECIPIENTS     = 'unasra@infoblox.com,hgupta1@infoblox.com'      // comma-separated list of addresses; leave empty to skip email
+def EMAIL_RECIPIENTS     = 'unasra@infoblox.com,hgupta1@infoblox.com,lkanth@infoblox.com,jkhatri@infoblox.com'      // comma-separated list of addresses; leave empty to skip email
 def EMAIL_ON_SUCCESS     = true    // set to false to only email on failure
 
 def runTestStage(String name, String dir, String timeout) {

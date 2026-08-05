@@ -112,7 +112,7 @@ EOF''',
         subject            : subject,
         body               : body,
         mimeType           : 'text/html',
-        recipientProviders : [requestor()]
+        recipientProviders : ["unasra@infoblox.com,hgupta1@infoblox.com"]
     )
     echo 'Test-results email sent to the build invoker.'
 }
