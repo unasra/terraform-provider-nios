@@ -404,22 +404,22 @@ node('Cloud-test1-172.28.81.12-label') {
 
                 // ── Test stages ───────────────────────────────────────────────
                 sh 'rm -rf $WORKSPACE/test-results && mkdir -p $WORKSPACE/test-results'
-                if (params.RUN_ACL)             { runTestStage('acl',             'internal/service/acl',             '5m')  } else { echo 'Skipping: acl' }
-                if (params.RUN_CLOUD)           { runTestStage('cloud',           'internal/service/cloud',           '5m')  } else { echo 'Skipping: cloud' }
-                if (params.RUN_DHCP)            { runTestStage('dhcp',            'internal/service/dhcp',            '80m') } else { echo 'Skipping: dhcp' }
-                if (params.RUN_DISCOVERY)       { runTestStage('discovery',       'internal/service/discovery',       '10m') } else { echo 'Skipping: discovery' }
-                if (params.RUN_DNS)             { runTestStage('dns',             'internal/service/dns',             '80m') } else { echo 'Skipping: dns' }
-                if (params.RUN_DTC)             { runTestStage('dtc',             'internal/service/dtc',             '30m') } else { echo 'Skipping: dtc' }
-                if (params.RUN_GRID)            { runTestStage('grid',            'internal/service/grid',            '30m') } else { echo 'Skipping: grid' }
-                if (params.RUN_IPAM)            { runTestStage('ipam',            'internal/service/ipam',            '80m') } else { echo 'Skipping: ipam' }
-                if (params.RUN_MICROSOFT)       { runTestStage('microsoft',       'internal/service/microsoft',       '30m') } else { echo 'Skipping: microsoft' }
-                if (params.RUN_MISC)            { runTestStage('misc',            'internal/service/misc',            '30m') } else { echo 'Skipping: misc' }
-                if (params.RUN_NOTIFICATION)    { runTestStage('notification',    'internal/service/notification',    '30m') } else { echo 'Skipping: notification' }
-                if (params.RUN_PARENTALCONTROL) { runTestStage('parentalcontrol', 'internal/service/parentalcontrol', '30m') } else { echo 'Skipping: parentalcontrol' }
-                if (params.RUN_RIR)             { runTestStage('rir',             'internal/service/rir',             '5m')  } else { echo 'Skipping: rir' }
-                if (params.RUN_RPZ)             { runTestStage('rpz',             'internal/service/rpz',             '45m') } else { echo 'Skipping: rpz' }
-                if (params.RUN_SECURITY)        { runTestStage('security',        'internal/service/security',        '30m') } else { echo 'Skipping: security' }
-                if (params.RUN_SMARTFOLDER)     { runTestStage('smartfolder',     'internal/service/smartfolder',     '5m')  } else { echo 'Skipping: smartfolder' }
+                if (params.RUN_ACL || params.RUN_SET_LICENSE)             { runTestStage('acl',             'internal/service/acl',             '5m')  } else { echo 'Skipping: acl' }
+                if (!params.RUN_SET_LICENSE && params.RUN_CLOUD)           { runTestStage('cloud',           'internal/service/cloud',           '5m')  } else if (params.RUN_SET_LICENSE) { echo 'Skipping: cloud (RUN_SET_LICENSE active)' } else { echo 'Skipping: cloud' }
+                if (!params.RUN_SET_LICENSE && params.RUN_DHCP)            { runTestStage('dhcp',            'internal/service/dhcp',            '80m') } else if (params.RUN_SET_LICENSE) { echo 'Skipping: dhcp (RUN_SET_LICENSE active)' } else { echo 'Skipping: dhcp' }
+                if (!params.RUN_SET_LICENSE && params.RUN_DISCOVERY)       { runTestStage('discovery',       'internal/service/discovery',       '10m') } else if (params.RUN_SET_LICENSE) { echo 'Skipping: discovery (RUN_SET_LICENSE active)' } else { echo 'Skipping: discovery' }
+                if (!params.RUN_SET_LICENSE && params.RUN_DNS)             { runTestStage('dns',             'internal/service/dns',             '80m') } else if (params.RUN_SET_LICENSE) { echo 'Skipping: dns (RUN_SET_LICENSE active)' } else { echo 'Skipping: dns' }
+                if (!params.RUN_SET_LICENSE && params.RUN_DTC)             { runTestStage('dtc',             'internal/service/dtc',             '30m') } else if (params.RUN_SET_LICENSE) { echo 'Skipping: dtc (RUN_SET_LICENSE active)' } else { echo 'Skipping: dtc' }
+                if (!params.RUN_SET_LICENSE && params.RUN_GRID)            { runTestStage('grid',            'internal/service/grid',            '30m') } else if (params.RUN_SET_LICENSE) { echo 'Skipping: grid (RUN_SET_LICENSE active)' } else { echo 'Skipping: grid' }
+                if (!params.RUN_SET_LICENSE && params.RUN_IPAM)            { runTestStage('ipam',            'internal/service/ipam',            '80m') } else if (params.RUN_SET_LICENSE) { echo 'Skipping: ipam (RUN_SET_LICENSE active)' } else { echo 'Skipping: ipam' }
+                if (!params.RUN_SET_LICENSE && params.RUN_MICROSOFT)       { runTestStage('microsoft',       'internal/service/microsoft',       '30m') } else if (params.RUN_SET_LICENSE) { echo 'Skipping: microsoft (RUN_SET_LICENSE active)' } else { echo 'Skipping: microsoft' }
+                if (!params.RUN_SET_LICENSE && params.RUN_MISC)            { runTestStage('misc',            'internal/service/misc',            '30m') } else if (params.RUN_SET_LICENSE) { echo 'Skipping: misc (RUN_SET_LICENSE active)' } else { echo 'Skipping: misc' }
+                if (!params.RUN_SET_LICENSE && params.RUN_NOTIFICATION)    { runTestStage('notification',    'internal/service/notification',    '30m') } else if (params.RUN_SET_LICENSE) { echo 'Skipping: notification (RUN_SET_LICENSE active)' } else { echo 'Skipping: notification' }
+                if (!params.RUN_SET_LICENSE && params.RUN_PARENTALCONTROL) { runTestStage('parentalcontrol', 'internal/service/parentalcontrol', '30m') } else if (params.RUN_SET_LICENSE) { echo 'Skipping: parentalcontrol (RUN_SET_LICENSE active)' } else { echo 'Skipping: parentalcontrol' }
+                if (!params.RUN_SET_LICENSE && params.RUN_RIR)             { runTestStage('rir',             'internal/service/rir',             '5m')  } else if (params.RUN_SET_LICENSE) { echo 'Skipping: rir (RUN_SET_LICENSE active)' } else { echo 'Skipping: rir' }
+                if (!params.RUN_SET_LICENSE && params.RUN_RPZ)             { runTestStage('rpz',             'internal/service/rpz',             '45m') } else if (params.RUN_SET_LICENSE) { echo 'Skipping: rpz (RUN_SET_LICENSE active)' } else { echo 'Skipping: rpz' }
+                if (!params.RUN_SET_LICENSE && params.RUN_SECURITY)        { runTestStage('security',        'internal/service/security',        '30m') } else if (params.RUN_SET_LICENSE) { echo 'Skipping: security (RUN_SET_LICENSE active)' } else { echo 'Skipping: security' }
+                if (!params.RUN_SET_LICENSE && params.RUN_SMARTFOLDER)     { runTestStage('smartfolder',     'internal/service/smartfolder',     '5m')  } else if (params.RUN_SET_LICENSE) { echo 'Skipping: smartfolder (RUN_SET_LICENSE active)' } else { echo 'Skipping: smartfolder' }
 
             } catch (err) {
                 currentBuild.result = 'FAILURE'
