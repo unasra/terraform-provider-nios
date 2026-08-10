@@ -3,8 +3,6 @@ package internal
 import (
 	"bytes"
 	"context"
-	"crypto/tls"
-	"encoding/base64"
 	"encoding/json"
 	"encoding/xml"
 	"errors"
@@ -13,7 +11,6 @@ import (
 	"log"
 	"mime/multipart"
 	"net/http"
-	"net/http/cookiejar"
 	"net/http/httputil"
 	"net/url"
 	"os"
@@ -24,31 +21,21 @@ import (
 	"strings"
 	"time"
 	"unicode/utf8"
-
-	"golang.org/x/net/publicsuffix"
 )
 
 const (
 	headerClient        = "x-infoblox-client"
 	headerSDK           = "x-infoblox-sdk"
 	headerAuthorization = "Authorization"
-	headerLicenseUID    = "license_uid"
 
-	envNiosHostURL  = "NIOS_HOST_URL"
-	envNiosUsername = "NIOS_USERNAME"
-	envNiosPassword = "NIOS_PASSWORD"
-	envNiosAPIKey   = "NIOS_API_KEY"
-
-	envIBLogLevel = "IB_LOG_LEVEL"
-
-	envClientCertPath = "CLIENT_CERT_PATH"
-	envClientKeyPath  = "CLIENT_KEY_PATH"
-
-	cspURL = "https://csp.eu.stage.test.infoblox.com"
+	envBloxOneCSPURL      = "BLOXONE_CSP_URL"
+	envUniversalDDICSPURL = "INFOBLOX_PORTAL_URL"
+	envBloxOneAPIKey      = "BLOXONE_API_KEY"
+	envUniversalDDIAPIKey = "INFOBLOX_PORTAL_KEY"
+	envIBLogLevel         = "IB_LOG_LEVEL"
 
 	version       = "0.1"
 	sdkIdentifier = "golang-sdk"
-	ibapAuth      = "ibapauth"
 )
 
 var (
@@ -69,154 +56,30 @@ type Service struct {
 	Client *APIClient
 }
 
-// RetryableTransport is a custom transport that retries the request if it fails
-// with a 401 Unauthorized status code and the ibapauth cookie is invalid
-type RetryableTransport struct {
-	Client    *APIClient
-	Transport http.RoundTripper
-}
-
-// RoundTrip overrides the RoundTrip method of http.RoundTripper for the RetryableTransport
-func (t *RetryableTransport) RoundTrip(request *http.Request) (*http.Response, error) {
-
-	var ibapAuthCookie *http.Cookie
-	cookies := t.Client.Cfg.HTTPClient.Jar.Cookies(request.URL)
-	for _, cookie := range cookies {
-		if cookie.Name == ibapAuth {
-			ibapAuthCookie = cookie
-			break
-		}
-	}
-
-	if ibapAuthCookie == nil || !isCookieValid(ibapAuthCookie) {
-		t.setAuth(request)
-	}
-
-	bodyBytes, err := io.ReadAll(request.Body)
-	if err != nil {
-		return nil, fmt.Errorf("error reading request body: %v", err)
-	}
-	request.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
-
-	resp, err := t.Transport.RoundTrip(request)
-	if err != nil {
-		return nil, err
-	}
-	if resp.StatusCode == http.StatusUnauthorized {
-		cookies := t.Client.Cfg.HTTPClient.Jar.Cookies(request.URL)
-		for _, cookie := range cookies {
-			if cookie.Name == ibapAuth && !isCookieValid(cookie) {
-
-				request.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
-				// Set authentication
-				t.setAuth(request)
-
-				// Make retry request
-				return t.Transport.RoundTrip(request)
-			}
-		}
-	}
-	return resp, nil
-}
-
 // NewAPIClient creates a new API client. Requires a userAgent string describing your application.
 // optionally a custom http.Client to allow for advanced features such as caching.
 func NewAPIClient(basePath string, cfg *Configuration) *APIClient {
-
-	tlsConfig := &tls.Config{
-		InsecureSkipVerify: !cfg.SslVerify,
+	if cfg.HTTPClient == nil {
+		cfg.HTTPClient = http.DefaultClient
 	}
-
-	baseTransport := &http.Transport{
-		TLSClientConfig: tlsConfig,
-	}
-
-	if cfg.ProxyURL != nil {
-		baseTransport.Proxy = http.ProxyURL(cfg.ProxyURL)
-	}
-
-	jar, err := cookiejar.New(&cookiejar.Options{PublicSuffixList: publicsuffix.List})
-	if err != nil {
-		log.Printf("Error creating cookie jar: %v", err)
-	}
-
-	c := &APIClient{}
-
-	retryableTransport := &RetryableTransport{
-		Client:    c,
-		Transport: baseTransport,
-	}
-	cfg.HTTPClient = &http.Client{
-		Transport: retryableTransport,
-		Jar:       jar,
-	}
-
 	if cfg.DefaultHeader == nil {
 		cfg.DefaultHeader = make(map[string]string)
 	}
-	if cfg.DefaultExtAttrs == nil {
-		cfg.DefaultExtAttrs = make(map[string]struct{ Value string })
+	if cfg.DefaultTags == nil {
+		cfg.DefaultTags = make(map[string]string)
 	}
 
-	apiUrl := cfg.NIOSHostURL + basePath
+	apiUrl := cfg.CSPURL + basePath
 	cfg.Servers = []ServerConfiguration{{URL: apiUrl}}
 	cfg.DefaultHeader[headerSDK] = sdkIdentifier
 	cfg.DefaultHeader[headerClient] = cfg.ClientName
+	cfg.DefaultHeader[headerAuthorization] = "Token " + cfg.APIKey
 
-	if cfg.APIKey != "" {
-		hostIP := strings.TrimPrefix(strings.TrimPrefix("https://172.28.83.15", "https://"), "http://")
-		licenseUID, err := fetchLicenseUID(cfg.APIKey, hostIP)
-		if err != nil {
-			log.Printf("Warning: failed to fetch license_uid: %v", err)
-		} else {
-			cfg.LicenseUID = licenseUID
-		}
-		cfg.DefaultHeader[headerAuthorization] = "Token " + cfg.APIKey
-		cfg.DefaultHeader[headerLicenseUID] = cfg.LicenseUID
-	}
-
+	c := &APIClient{}
 	c.Cfg = cfg
 	c.Common.Client = c
 
 	return c
-}
-
-// setCertificateAuth sets the certificate authentication for the request
-func (t *RetryableTransport) setCertificateAuth() *tls.Config {
-
-	var tlsConfig *tls.Config
-
-	if t.Client.Cfg.ClientKey != nil && t.Client.Cfg.ClientCert != nil {
-		cert, err := tls.X509KeyPair(t.Client.Cfg.ClientCert, t.Client.Cfg.ClientKey)
-		if err != nil {
-			log.Printf("Invalid certificate key pair (PEM format error)%e: ", err)
-		}
-
-		if transport, ok := t.Transport.(*http.Transport); ok {
-			tlsConfig = transport.TLSClientConfig
-			transport.TLSClientConfig.ClientAuth = tls.RequestClientCert
-			transport.TLSClientConfig.Certificates = []tls.Certificate{cert}
-		}
-	}
-	return tlsConfig
-}
-
-// setAuth sets the authentication for the request
-func (t *RetryableTransport) setAuth(request *http.Request) {
-	cfg := t.Client.Cfg
-
-	if cfg.APIKey != "" {
-		// Authorization is already set via DefaultHeader as "Token <APIKey>"
-		return
-	}
-	if cfg.NIOSUsername != "" && cfg.NIOSPassword != "" {
-		Auth := cfg.NIOSUsername + ":" + cfg.NIOSPassword
-		request.Header.Set(headerAuthorization, "Basic "+base64.StdEncoding.EncodeToString([]byte(Auth)))
-	} else if cfg.ClientCert != nil && cfg.ClientKey != nil {
-		if transport, ok := t.Transport.(*http.Transport); ok {
-			transport.TLSClientConfig = t.setCertificateAuth()
-		}
-	}
 }
 
 func atoi(in string) (int, error) {
@@ -320,7 +183,7 @@ func extractResourceId(id string) string {
 
 // ParameterAddToHeaderOrQuery adds the provided object to the request header or url query
 // supporting deep object syntax
-func ParameterAddToHeaderOrQuery(headerOrQueryParams interface{}, keyPrefix string, obj interface{}, style string, collectionType string) {
+func ParameterAddToHeaderOrQuery(headerOrQueryParams interface{}, keyPrefix string, obj interface{}, collectionType string) {
 	var v = reflect.ValueOf(obj)
 	var value = ""
 	if v == reflect.ValueOf(nil) {
@@ -336,11 +199,11 @@ func ParameterAddToHeaderOrQuery(headerOrQueryParams interface{}, keyPrefix stri
 				if err != nil {
 					return
 				}
-				ParameterAddToHeaderOrQuery(headerOrQueryParams, keyPrefix, dataMap, style, collectionType)
+				ParameterAddToHeaderOrQuery(headerOrQueryParams, keyPrefix, dataMap, collectionType)
 				return
 			}
 			if t, ok := obj.(time.Time); ok {
-				ParameterAddToHeaderOrQuery(headerOrQueryParams, keyPrefix, t.Format(time.RFC3339), style, collectionType)
+				ParameterAddToHeaderOrQuery(headerOrQueryParams, keyPrefix, t.Format(time.RFC3339), collectionType)
 				return
 			}
 			value = v.Type().String() + " value"
@@ -352,11 +215,7 @@ func ParameterAddToHeaderOrQuery(headerOrQueryParams interface{}, keyPrefix stri
 			var lenIndValue = indValue.Len()
 			for i := 0; i < lenIndValue; i++ {
 				var arrayValue = indValue.Index(i)
-				var keyPrefixForCollectionType = keyPrefix
-				if style == "deepObject" {
-					keyPrefixForCollectionType = keyPrefix + "[" + strconv.Itoa(i) + "]"
-				}
-				ParameterAddToHeaderOrQuery(headerOrQueryParams, keyPrefixForCollectionType, arrayValue.Interface(), style, collectionType)
+				ParameterAddToHeaderOrQuery(headerOrQueryParams, keyPrefix, arrayValue.Interface(), collectionType)
 			}
 			return
 
@@ -368,23 +227,14 @@ func ParameterAddToHeaderOrQuery(headerOrQueryParams interface{}, keyPrefix stri
 			iter := indValue.MapRange()
 			for iter.Next() {
 				k, v := iter.Key(), iter.Value()
-				if style == "form" {
-					if keyPrefix == "extattrfilter" {
-						ParameterAddToHeaderOrQuery(headerOrQueryParams, fmt.Sprintf("*%s", k.String()), v.Interface(), style, collectionType)
-
-					} else {
-						ParameterAddToHeaderOrQuery(headerOrQueryParams, fmt.Sprintf("%s", k.String()), v.Interface(), style, collectionType)
-					}
-				} else {
-					ParameterAddToHeaderOrQuery(headerOrQueryParams, fmt.Sprintf("%s[%s]", keyPrefix, k.String()), v.Interface(), style, collectionType)
-				}
+				ParameterAddToHeaderOrQuery(headerOrQueryParams, fmt.Sprintf("%s[%s]", keyPrefix, k.String()), v.Interface(), collectionType)
 			}
 			return
 
 		case reflect.Interface:
 			fallthrough
 		case reflect.Ptr:
-			ParameterAddToHeaderOrQuery(headerOrQueryParams, keyPrefix, v.Elem().Interface(), style, collectionType)
+			ParameterAddToHeaderOrQuery(headerOrQueryParams, keyPrefix, v.Elem().Interface(), collectionType)
 			return
 
 		case reflect.Int, reflect.Int8, reflect.Int16,
@@ -427,36 +277,6 @@ func parameterToJson(obj interface{}) (string, error) {
 	return string(jsonBuf), err
 }
 
-func isCookieValid(cookie *http.Cookie) bool {
-	// Parse the cookie value
-	cookieParts := strings.Split(cookie.Value, ",")
-	cookieMap := make(map[string]string)
-	for _, part := range cookieParts {
-		kv := strings.SplitN(part, "=", 2)
-		if len(kv) == 2 {
-			cookieMap[kv[0]] = kv[1]
-		}
-	}
-
-	// Extract ctime and timeout
-	ctime, err := strconv.ParseInt(cookieMap["ctime"], 10, 64)
-	if err != nil {
-		log.Printf("Error parsing ctime: %v", err)
-		return false
-	}
-	timeout, err := strconv.ParseInt(cookieMap["timeout"], 10, 64)
-	if err != nil {
-		log.Printf("Error parsing timeout: %v", err)
-		return false
-	}
-
-	// Calculate expiry time
-	expiryTime := time.Unix(ctime, 0).Add(time.Duration(timeout) * time.Second)
-
-	// Check if the cookie is still valid
-	return time.Now().Before(expiryTime)
-}
-
 // CallAPI do the request.
 func (c *APIClient) CallAPI(request *http.Request) (*http.Response, error) {
 	if c.Cfg.Debug {
@@ -465,10 +285,6 @@ func (c *APIClient) CallAPI(request *http.Request) (*http.Response, error) {
 			return nil, err
 		}
 		log.Printf("\n%s\n", string(dump))
-	}
-
-	if request.Body == nil {
-		request.Body = http.NoBody
 	}
 
 	resp, err := c.Cfg.HTTPClient.Do(request)

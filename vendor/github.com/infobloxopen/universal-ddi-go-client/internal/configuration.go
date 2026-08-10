@@ -3,9 +3,7 @@ package internal
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
-	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -59,45 +57,34 @@ type ServerConfigurations []ServerConfiguration
 // Configuration stores the configuration of the API client
 type Configuration struct {
 	ClientName       string            `json:"clientName,omitempty"`
-	NIOSHostURL      string            `json:"niosHostURL,omitempty"`
-	NIOSUsername     string            `json:"niosUsername,omitempty"`
-	NIOSPassword     string            `json:"niosPassword,omitempty"`
+	CSPURL           string            `json:"cspURL,omitempty"`
 	APIKey           string            `json:"apiKey,omitempty"`
-	LicenseUID       string            `json:"licenseUID,omitempty"`
 	DefaultHeader    map[string]string `json:"defaultHeader,omitempty"`
 	UserAgent        string            `json:"userAgent,omitempty"`
 	Debug            bool              `json:"debug,omitempty"`
 	Servers          ServerConfigurations
 	OperationServers map[string]ServerConfigurations
 	HTTPClient       *http.Client
-	DefaultExtAttrs  map[string]struct{ Value string }
-	ClientCert       []byte
-	ClientKey        []byte
-	SslVerify        bool
-	ProxyURL         *url.URL
+	DefaultTags      map[string]string
 }
 
 // NewConfiguration returns a new Configuration object.
 // The following default values are set:
-// - ClientName: "nios-go-client"
-// - UserAgent: "nios-go-client/version"
+// - ClientName: "universal-ddi-go-client"
+// - CSPURL: "https://csp.infoblox.com"
+// - UserAgent: "universal-ddi-go-client/version"
 // - Debug: false
 func NewConfiguration() *Configuration {
 	cfg := &Configuration{
-		ClientName:       "nios-go-client",
-		NIOSHostURL:      lookupEnv(envNiosHostURL, ""),
-		NIOSUsername:     lookupEnv(envNiosUsername, ""),
-		NIOSPassword:     lookupEnv(envNiosPassword, ""),
-		APIKey:           lookupEnv(envNiosAPIKey, ""),
+		ClientName:       "universal-ddi-go-client",
+		CSPURL:           lookupEnvAny([]string{envUniversalDDICSPURL, envBloxOneCSPURL}, "https://csp.infoblox.com"),
+		APIKey:           lookupEnvAny([]string{envUniversalDDIAPIKey, envBloxOneAPIKey}, ""),
 		DefaultHeader:    make(map[string]string),
-		Debug:            lookupEnvBool(envIBLogLevel, true),
-		UserAgent:        fmt.Sprintf("nios-%s/%s", sdkIdentifier, version),
+		Debug:            lookupEnvBool(envIBLogLevel, false),
+		UserAgent:        fmt.Sprintf("universal-ddi-%s/%s", sdkIdentifier, version),
 		Servers:          ServerConfigurations{},
 		OperationServers: map[string]ServerConfigurations{},
-		DefaultExtAttrs:  make(map[string]struct{ Value string }),
-		ClientCert:       readFile(envClientCertPath),
-		ClientKey:        readFile(envClientKeyPath),
-		SslVerify:        false,
+		DefaultTags:      make(map[string]string),
 	}
 	return cfg
 }
@@ -234,15 +221,11 @@ func lookupEnvBool(key string, def bool) bool {
 	return def
 }
 
-func readFile(filepath string) []byte {
-	filepath = lookupEnv(filepath, "")
-	if filepath == "" {
-		return nil
+func lookupEnvAny(keys []string, def string) string {
+	for _, key := range keys {
+		if v, ok := os.LookupEnv(key); ok {
+			return v
+		}
 	}
-	data, err := os.ReadFile(filepath)
-	if err != nil {
-		log.Printf("Error reading client cert file '%s': %v", filepath, err)
-		return nil
-	}
-	return data
+	return def
 }
