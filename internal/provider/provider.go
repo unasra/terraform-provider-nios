@@ -123,6 +123,7 @@ func (p *NIOSProvider) Configure(ctx context.Context, req provider.ConfigureRequ
 		option.WithNIOSHostUrl(data.NIOSHostURL.ValueString()),
 		option.WithDebug(true),
 		option.WithProxyURL(data.ProxyURL.ValueString()),
+		option.WithNIOSPassthrough(true),
 	)
 
 	// Set ProxySearch configuration
