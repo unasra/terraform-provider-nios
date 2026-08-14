@@ -235,7 +235,7 @@ node('Cloud-test1-172.28.81.12-label') {
             // WAPI Passthru — leave empty if not testing WAPI Passthru
             env.NIOS_LICENSE_UID    = params.NIOS_LICENSE_UID
             env.INFOBLOX_PORTAL_KEY = params.INFOBLOX_PORTAL_KEY
-            env.INFOBLOX_PORTAL_URL = params.NIOS_HOST_URL
+            env.INFOBLOX_PORTAL_URL = "https://wapi-csp.eu-stg-1.eu.stage.test.infoblox.com"
 
             try {
 
