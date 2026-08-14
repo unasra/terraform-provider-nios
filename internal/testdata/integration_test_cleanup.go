@@ -473,7 +473,7 @@ func main() {
 	password := strings.TrimSpace(cleanupFirstNonEmpty(os.Getenv("NIOS_PASSWORD")))
 	licenseUID := strings.TrimSpace(os.Getenv("NIOS_LICENSE_UID"))
 	portalKey := strings.TrimSpace(os.Getenv("INFOBLOX_PORTAL_KEY"))
-	portalUrl := strings.TrimSpace(os.Getenv("INFOBLOX_PORTAL_URL"))
+	portalUrl := strings.TrimSpace(os.Getenv("NIOS_HOST_URL"))
 
 	if host == "" || username == "" || password == "" {
 		fmt.Println("Missing required NIOS configuration. Ensure host, username, and password are set.")
