@@ -1987,6 +1987,7 @@ func main() {
 		option.WithNIOSUsername(username),
 		option.WithNIOSPassword(password),
 		option.WithDebug(true),
+		option.WithNIOSPassthrough(true),
 	)
 
 	hostnames, err := ResolveAndStoreGridHostnames(apiClient.GridAPI)

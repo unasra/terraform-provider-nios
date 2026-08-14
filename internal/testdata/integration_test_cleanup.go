@@ -488,6 +488,7 @@ func main() {
 		option.WithNIOSUsername(username),
 		option.WithNIOSPassword(password),
 		option.WithDebug(true),
+		option.WithNIOSPassthrough(true),
 	)
 
 	fmt.Println("Starting cleanup of dangling integration test resources...")
