@@ -10,6 +10,10 @@ properties([
         booleanParam(name: 'ENABLE_DEBUG_LOGGING', defaultValue: false,   description: 'Enable DEBUG level Terraform logging (TF_LOG=DEBUG)'),
         booleanParam(name: 'RUN_SET_LICENSE',      defaultValue: false,   description: 'Set Licenses on Grids before tests'),
 
+        // ── WAPI Passthru (only required when testing WAPI Passthru) ─────────
+        string(name: 'NIOS_LICENSE_UID',    defaultValue: '', description: '[WAPI Passthru only] NIOS License UID'),
+        string(name: 'INFOBLOX_PORTAL_KEY', defaultValue: '', description: '[WAPI Passthru only] Infoblox Portal API key'),
+
         // ── Test-group selection (all enabled by default) ─────────────────
         booleanParam(name: 'RUN_ACL',             defaultValue: true, description: 'Run ACL tests'),
         booleanParam(name: 'RUN_CLOUD',           defaultValue: true, description: 'Run Cloud tests'),
@@ -228,6 +232,9 @@ node('Cloud-test1-172.28.81.12-label') {
             env.GO_VERSION        = '1.25.3'
             env.TF_VERSION        = params.TF_VERSION
             env.PATH              = "${env.WORKSPACE}/tools/go/bin:/usr/local/go/bin:${env.HOME}/go/bin:${env.WORKSPACE}/bin:${env.PATH}"
+            // WAPI Passthru — leave empty if not testing WAPI Passthru
+            env.NIOS_LICENSE_UID    = params.NIOS_LICENSE_UID
+            env.INFOBLOX_PORTAL_KEY = params.INFOBLOX_PORTAL_KEY
 
             try {
 
