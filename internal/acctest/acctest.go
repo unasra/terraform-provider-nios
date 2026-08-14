@@ -144,5 +144,6 @@ func PreCheck(t *testing.T) {
 		option.WithNIOSUsername(username),
 		option.WithNIOSPassword(password),
 		option.WithDebug(true),
+		option.WithNIOSPassthrough(true),
 	)
 }
