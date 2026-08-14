@@ -471,6 +471,9 @@ func main() {
 	host := strings.TrimSpace(cleanupFirstNonEmpty(os.Getenv("NIOS_HOST_URL")))
 	username := strings.TrimSpace(cleanupFirstNonEmpty(os.Getenv("NIOS_USERNAME")))
 	password := strings.TrimSpace(cleanupFirstNonEmpty(os.Getenv("NIOS_PASSWORD")))
+	licenseUID := strings.TrimSpace(os.Getenv("NIOS_LICENSE_UID"))
+	portalKey := strings.TrimSpace(os.Getenv("INFOBLOX_PORTAL_KEY"))
+	portalUrl := strings.TrimSpace(os.Getenv("INFOBLOX_PORTAL_URL"))
 
 	if host == "" || username == "" || password == "" {
 		fmt.Println("Missing required NIOS configuration. Ensure host, username, and password are set.")
@@ -483,13 +486,24 @@ func main() {
 		os.Exit(1)
 	}
 
-	apiClient := client.NewAPIClient(
+	clientOpts := []option.ClientOption{
 		option.WithNIOSHostUrl(host),
 		option.WithNIOSUsername(username),
 		option.WithNIOSPassword(password),
 		option.WithDebug(true),
-		option.WithNIOSPassthrough(true),
-	)
+	}
+
+	if licenseUID != "" && portalKey != "" {
+		fmt.Printf("Passthru mode enabled: license UID=%q\n", licenseUID)
+		clientOpts = append(clientOpts,
+			option.WithNIOSPassthrough(true),
+			option.WithNIOSLicenseUID(licenseUID),
+			option.WithPortalAPIKey(portalKey),
+			option.WithPortalUrl(portalUrl),
+		)
+	}
+
+	apiClient := client.NewAPIClient(clientOpts...)
 
 	fmt.Println("Starting cleanup of dangling integration test resources...")
 	Cleanup(apiClient)

@@ -1951,6 +1951,9 @@ func main() {
 	wapiVer := strings.TrimSpace(firstNonEmpty(os.Getenv("NIOS_WAPI_VERSION"), "v2.13.6"))
 	username := strings.TrimSpace(firstNonEmpty(os.Getenv("NIOS_USERNAME")))
 	password := strings.TrimSpace(firstNonEmpty(os.Getenv("NIOS_PASSWORD")))
+	licenseUID := strings.TrimSpace(os.Getenv("NIOS_LICENSE_UID"))
+	portalKey := strings.TrimSpace(os.Getenv("INFOBLOX_PORTAL_KEY"))
+	portalUrl := strings.TrimSpace(os.Getenv("INFOBLOX_PORTAL_URL"))
 
 	if host == "" || wapiVer == "" || username == "" || password == "" {
 		fmt.Println("Missing required NIOS configuration. Ensure host, WAPI version, username, and password are set.")
@@ -1982,13 +1985,24 @@ func main() {
 		pipelineEnvFile = nil
 	}()
 
-	apiClient := client.NewAPIClient(
+	clientOpts := []option.ClientOption{
 		option.WithNIOSHostUrl(host),
 		option.WithNIOSUsername(username),
 		option.WithNIOSPassword(password),
 		option.WithDebug(true),
-		option.WithNIOSPassthrough(true),
-	)
+	}
+
+	if licenseUID != "" && portalKey != "" {
+		fmt.Printf("Passthru mode enabled: license UID=%q\n", licenseUID)
+		clientOpts = append(clientOpts,
+			option.WithNIOSPassthrough(true),
+			option.WithNIOSLicenseUID(licenseUID),
+			option.WithPortalAPIKey(portalKey),
+			option.WithPortalUrl(portalUrl),
+		)
+	}
+
+	apiClient := client.NewAPIClient(clientOpts...)
 
 	hostnames, err := ResolveAndStoreGridHostnames(apiClient.GridAPI)
 	if err != nil {
