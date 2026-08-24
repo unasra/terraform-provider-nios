@@ -462,7 +462,7 @@ func (r *NetworkResource) Delete(ctx context.Context, req resource.DeleteRequest
 		}
 	}
 
-	err := retry.Do(ctx, retry.TransientErrors, func(ctx context.Context) (int, error) {
+	err := retry.Do(ctx, retry.IsDhcpIpamError, func(ctx context.Context) (int, error) {
 		httpRes, callErr := r.client.IPAMAPI.
 			NetworkAPI.
 			Delete(ctx, resourceRef).

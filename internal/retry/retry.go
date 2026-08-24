@@ -103,6 +103,26 @@ func TransientErrors(err error) bool {
 	return false
 }
 
+func IsDhcpIpamError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	errStr := strings.ToLower(err.Error())
+	networkPatterns := []string{
+		"failed to get the response from cloud service",
+		"delete network with assigned federated realms",
+	}
+
+	for _, pattern := range networkPatterns {
+		if strings.Contains(errStr, pattern) {
+			return true
+		}
+	}
+
+	return false
+}
+
 // IsNetworkError checks if the error is a network-related error.
 func IsNetworkError(err error) bool {
 	if err == nil {

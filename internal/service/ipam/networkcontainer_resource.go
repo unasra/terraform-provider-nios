@@ -426,7 +426,7 @@ func (r *NetworkcontainerResource) Delete(ctx context.Context, req resource.Dele
 
 	resourceRef := utils.ExtractResourceRef(data.Ref.ValueString())
 
-	err := retry.Do(ctx, retry.TransientErrors, func(ctx context.Context) (int, error) {
+	err := retry.Do(ctx, retry.IsDhcpIpamError, func(ctx context.Context) (int, error) {
 		deleteReq := r.client.IPAMAPI.
 			NetworkcontainerAPI.
 			Delete(ctx, resourceRef)
