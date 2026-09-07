@@ -30,6 +30,7 @@ properties([
         booleanParam(name: 'RUN_RPZ',             defaultValue: true, description: 'Run RPZ tests'),
         booleanParam(name: 'RUN_SECURITY',        defaultValue: true, description: 'Run Security tests'),
         booleanParam(name: 'RUN_SMARTFOLDER',     defaultValue: true, description: 'Run Smart Folder tests')
+        booleanParam(name: 'RUN_KEYS',            defaultValue: true, description: 'Run Keys tests')
     ])
 ])
 
@@ -276,6 +277,8 @@ node('Cloud-test1-172.28.81.12-label') {
                 if (params.RUN_RPZ)             { runTestStage('rpz',             'internal/service/rpz',             '45m') } else { echo 'Skipping: rpz' }
                 if (params.RUN_SECURITY)        { runTestStage('security',        'internal/service/security',        '30m') } else { echo 'Skipping: security' }
                 if (params.RUN_SMARTFOLDER)     { runTestStage('smartfolder',     'internal/service/smartfolder',     '5m')  } else { echo 'Skipping: smartfolder' }
+                if (params.RUN_KEYS)            { runTestStage('keys',             'internal/service/keys',           '5m')  } else { echo 'Skipping: keys' }
+
 
             } catch (err) {
                 currentBuild.result = 'FAILURE'
