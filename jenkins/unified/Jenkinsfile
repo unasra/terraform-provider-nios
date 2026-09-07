@@ -9,6 +9,10 @@ properties([
         booleanParam(name: 'ENABLE_DEBUG_LOGGING', defaultValue: false,   description: 'Enable DEBUG level Terraform logging (TF_LOG=DEBUG)'),
         booleanParam(name: 'RUN_SET_LICENSE',      defaultValue: false,   description: 'Set Licenses on Grids before tests'),
 
+        // ── UDDI Credentials ─────────
+        string(name: 'INFOBLOX_PORTAL_URL',    defaultValue: '', description: 'Infoblox Portal URL'),
+        string(name: 'INFOBLOX_PORTAL_KEY', defaultValue: '', description: 'Infoblox Portal API key'),
+
         // ── Test-group selection (all enabled by default) ─────────────────
         booleanParam(name: 'RUN_ACL',             defaultValue: true, description: 'Run ACL tests'),
         booleanParam(name: 'RUN_CLOUD',           defaultValue: true, description: 'Run Cloud tests'),
@@ -30,12 +34,11 @@ properties([
 ])
 
 def runTestStage(String name, String dir, String timeout) {
+    if (!fileExists(dir)) {
+        echo "Skipping: ${name} — directory '${dir}' not found"
+        return
+    }
     stage("Tests: ${name}") {
-        if (!fileExists(dir)) {
-            echo "Skipping: ${name} — directory '${dir}' not found"
-            org.jenkinsci.plugins.pipeline.modeldefinition.Utils.markStageSkippedForConditional("Tests: ${name}")
-            return
-        }
         try {
             sh """
                 cd ${dir}
@@ -58,6 +61,8 @@ node('Cloud-test1-172.28.81.12-label') {
         timeout(time: 240, unit: 'MINUTES') {
 
             // ── Environment variables ─────────────────────────────────────────
+            env.INFOBLOX_PORTAL_URL = params.INFOBLOX_PORTAL_URL
+        env.INFOBLOX_PORTAL_KEY = params.INFOBLOX_PORTAL_KEY
             env.NIOS_HOST_URL     = params.GM_URL
             env.NIOS_MEMBER_URL   = params.MEMBER_URL
             env.NIOS_WAPI_VERSION = 'v2.13.6'
