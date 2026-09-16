@@ -29,7 +29,7 @@ properties([
         booleanParam(name: 'RUN_RIR',             defaultValue: true, description: 'Run RIR tests'),
         booleanParam(name: 'RUN_RPZ',             defaultValue: true, description: 'Run RPZ tests'),
         booleanParam(name: 'RUN_SECURITY',        defaultValue: true, description: 'Run Security tests'),
-        booleanParam(name: 'RUN_SMARTFOLDER',     defaultValue: true, description: 'Run Smart Folder tests')
+        booleanParam(name: 'RUN_SMARTFOLDER',     defaultValue: true, description: 'Run Smart Folder tests'),
         booleanParam(name: 'RUN_KEYS',            defaultValue: true, description: 'Run Keys tests')
     ])
 ])
@@ -243,15 +243,29 @@ node('Cloud-test1-172.28.81.12-label') {
                             exit 1
                         fi
 
-                        if [ ! -s pipeline.env ]; then
-                            echo "pipeline.env was not generated or is empty."
+                        if [ ! -s pipeline_uddi.env ]; then
+                            echo "pipeline_uddi.env was not generated or is empty."
+                            exit 1
+                        fi
+
+                        if [ ! -s pipeline_nios.env ]; then
+                            echo "pipeline_nios.env was not generated or is empty."
                             exit 1
                         fi
                     '''
 
                     // Inject pipeline.env into Jenkins env
-                    def envVars = readFile('pipeline.env').trim().split('\n')
+                    def envVars = readFile('pipeline_nios.env').trim().split('\n')
                     envVars.each { line ->
+                        def parts = line.split('=', 2)
+                        if (parts.length == 2) {
+                            env.setProperty(parts[0], parts[1])
+                        }
+                    }
+
+                    // Inject pipeline.env into Jenkins env
+                    def envVars2 = readFile('pipeline_uddi.env').trim().split('\n')
+                    envVars2.each { line ->
                         def parts = line.split('=', 2)
                         if (parts.length == 2) {
                             env.setProperty(parts[0], parts[1])
@@ -277,7 +291,7 @@ node('Cloud-test1-172.28.81.12-label') {
                 if (params.RUN_RPZ)             { runTestStage('rpz',             'internal/service/rpz',             '45m') } else { echo 'Skipping: rpz' }
                 if (params.RUN_SECURITY)        { runTestStage('security',        'internal/service/security',        '30m') } else { echo 'Skipping: security' }
                 if (params.RUN_SMARTFOLDER)     { runTestStage('smartfolder',     'internal/service/smartfolder',     '5m')  } else { echo 'Skipping: smartfolder' }
-                if (params.RUN_KEYS)            { runTestStage('keys',             'internal/service/keys',           '5m')  } else { echo 'Skipping: keys' }
+                if (params.RUN_KEYS)            { runTestStage('keys',            'internal/service/keys',           '5m')  } else { echo 'Skipping: keys' }
 
 
             } catch (err) {
