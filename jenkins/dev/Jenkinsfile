@@ -335,7 +335,7 @@ node('Cloud-test1-172.28.81.12-label') {
                     sh '''#!/bin/bash
                         set -euo pipefail
 
-                        DEST="${WORKSPACE}/internal/acctest/integration_tests/nios_ecosystem_templates"
+                        DEST="${WORKSPACE}/internal/testdata/nios_ecosystem_templates"
                         mkdir -p "${DEST}"
 
                         QA_REPO="git@github.com:Infoblox-CTO/qa-nios-api-tests.git"
