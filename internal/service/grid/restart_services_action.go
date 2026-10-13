@@ -11,11 +11,6 @@ import (
 	"github.com/infobloxopen/terraform-provider-nios/internal/utils"
 )
 
-const (
-	restartOptionIfNeeded = "RESTART_IF_NEEDED"
-	restartServiceAll     = "ALL"
-)
-
 var (
 	_ action.Action              = &RestartServicesAction{}
 	_ action.ActionWithConfigure = &RestartServicesAction{}
@@ -71,16 +66,18 @@ func (a *RestartServicesAction) Invoke(ctx context.Context, req action.InvokeReq
 		Execute()
 	if err != nil {
 		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to get Grid Reference, got error: %s", err))
+		return
 	}
 
 	grids := gridResponse.ListGridResponseObject.GetResult()
 	if len(grids) == 0 || grids[0].GetRef() == "" {
-		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to get Grid Reference, got empty"))
+		resp.Diagnostics.AddError("Client Error", "Unable to get Grid Reference, got empty result")
+		return
 	}
 
 	gridRef := grids[0].GetRef()
 
-	StatusCode, err := a.client.GridAPI.GridAPI.
+	httpResp, err := a.client.GridAPI.GridAPI.
 		CreateFunctionCall(ctx, utils.ExtractResourceRef(gridRef)).
 		GridFunctionCall(*data.Expand(ctx, &resp.Diagnostics)).
 		ReturnAsObject(1).
@@ -91,8 +88,9 @@ func (a *RestartServicesAction) Invoke(ctx context.Context, req action.InvokeReq
 		return
 	}
 
-	if StatusCode.StatusCode < http.StatusOK || StatusCode.StatusCode >= http.StatusMultipleChoices {
-		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to restart NIOS services, got status code: %d", StatusCode.StatusCode))
+	if httpResp.StatusCode < http.StatusOK || httpResp.StatusCode >= http.StatusMultipleChoices {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to restart NIOS services, got status code: %d", httpResp.StatusCode))
+		return
 	}
 
 	if resp.SendProgress != nil {

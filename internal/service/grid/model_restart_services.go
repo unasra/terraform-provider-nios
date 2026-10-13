@@ -6,7 +6,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	schema "github.com/hashicorp/terraform-plugin-framework/action/schema"
-	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -23,24 +22,6 @@ type RestartServicesModel struct {
 	RestartOption types.String `tfsdk:"restart_option"`
 	Services      types.List   `tfsdk:"services"`
 	UserName      types.String `tfsdk:"user_name"`
-}
-
-var RestartServicesAttrTypes = map[string]attr.Type{
-	"groups":         types.ListType{ElemType: types.StringType},
-	"members":        types.ListType{ElemType: types.StringType},
-	"mode":           types.StringType,
-	"restart_option": types.StringType,
-	"services":       types.ListType{ElemType: types.StringType},
-	"user_name":      types.StringType,
-}
-
-type restartServicesRequest struct {
-	Groups        []string `json:"groups,omitempty"`
-	Members       []string `json:"members,omitempty"`
-	Mode          string   `json:"mode,omitempty"`
-	RestartOption string   `json:"restart_option"`
-	Services      []string `json:"services"`
-	UserName      string   `json:"user_name,omitempty"`
 }
 
 var RestartServicesActionSchemaAttributes = map[string]schema.Attribute{
@@ -99,16 +80,14 @@ func (m *RestartServicesModel) Expand(ctx context.Context, diags *diag.Diagnosti
 	if m == nil {
 		return nil
 	}
-	to1 := &grid.GridFunctionCallOneOf{
-		Groups:        flex.ExpandFrameworkListStringEmptyAsNil(ctx, m.Groups, diags),
-		Members:       flex.ExpandFrameworkListStringEmptyAsNil(ctx, m.Members, diags),
-		Mode:          flex.ExpandStringPointer(m.Mode),
-		RestartOption: flex.ExpandStringPointer(m.RestartOption),
-		Services:      flex.ExpandFrameworkListStringEmptyAsNil(ctx, m.Services, diags),
-		UserName:      flex.ExpandStringPointer(m.UserName),
+	return &grid.GridFunctionCall{
+		GridFunctionCallOneOf: &grid.GridFunctionCallOneOf{
+			Groups:        flex.ExpandFrameworkListStringEmptyAsNil(ctx, m.Groups, diags),
+			Members:       flex.ExpandFrameworkListStringEmptyAsNil(ctx, m.Members, diags),
+			Mode:          flex.ExpandStringPointer(m.Mode),
+			RestartOption: flex.ExpandStringPointer(m.RestartOption),
+			Services:      flex.ExpandFrameworkListStringEmptyAsNil(ctx, m.Services, diags),
+			UserName:      flex.ExpandStringPointer(m.UserName),
+		},
 	}
-	to := &grid.GridFunctionCall{
-		GridFunctionCallOneOf: to1,
-	}
-	return to
 }

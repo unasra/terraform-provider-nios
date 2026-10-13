@@ -9,19 +9,17 @@ import (
 )
 
 func TestRestartServicesAction_DNS(t *testing.T) {
-
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t) },
 		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
-			// Create and Read
+			// Forces restart of DNS Service in GROUPED mode after DNS View creation
 			{
-				Config: testAccRestartServicesActionBasicConfig(),
+				Config: testAccRestartServicesAction_DNS(),
 			},
 			// Delete testing automatically occurs in TestCase
 		},
 	})
-
 }
 
 func TestRestartServicesAction_DHCPv4(t *testing.T) {
@@ -32,17 +30,17 @@ func TestRestartServicesAction_DHCPv4(t *testing.T) {
 		PreCheck:                 func() { acctest.PreCheck(t) },
 		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
-			// Create and Read
+			// Forces restart of DHCPv4 Service in SEQUENTIAL mode after DHCP Range creation
 			{
-				Config: testAccRestartServicesActionMembers(startAddr, endAddr, "initial comment", "infoblox.member2", "admin"),
+				Config: testAccRestartServicesAction_DHCPv4(startAddr, endAddr, "initial comment", "infoblox.member2", "admin"),
 			},
+			// Forces restart of DHCPv4 Service in SEQUENTIAL mode after DHCP Range comment update
 			{
-				Config: testAccRestartServicesActionMembers(startAddr, endAddr, "updated comment", "infoblox.172_28_83_185", "admin"),
+				Config: testAccRestartServicesAction_DHCPv4(startAddr, endAddr, "updated comment", "infoblox.172_28_83_185", "admin"),
 			},
 			// Delete testing automatically occurs in TestCase
 		},
 	})
-
 }
 
 func TestRestartServicesAction_DHCPv6(t *testing.T) {
@@ -55,56 +53,56 @@ func TestRestartServicesAction_DHCPv6(t *testing.T) {
 		PreCheck:                 func() { acctest.PreCheck(t) },
 		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
-			// Create and Read
+			// Restarts DHCPv6 Service in SIMULTANEOUS mode after IPv6 Fixed Address creation (RESTART_IF_NEEDED)
 			{
-				Config: testAccRestartServicesActionGroups(ipv6addr, duid, networkView, ipv6Network),
+				Config: testAccRestartServicesAction_DHCPv6(ipv6addr, duid, networkView, ipv6Network),
 			},
 			// Delete testing automatically occurs in TestCase
 		},
 	})
-
 }
 
-func testAccRestartServicesActionBasicConfig() string {
-	return fmt.Sprintf(`
+func testAccRestartServicesAction_DNS() string {
+	return `
 action "nios_restart_services" "dns" {
   config {
     services       = ["DNS"]
     restart_option = "FORCE_RESTART"
-	mode = "GROUPED"
+    mode           = "GROUPED"
   }
 }
 
 resource "nios_dns_view" "test" {
-	name = "new_view"
-	
-	lifecycle {
+  name = "new_view"
+
+  lifecycle {
     action_trigger {
       events  = [after_create]
       actions = [action.nios_restart_services.dns]
     }
   }
 }
-`)
+`
 }
 
-func testAccRestartServicesActionMembers(startAddr, endAddr, comment, member, userName string) string {
+func testAccRestartServicesAction_DHCPv4(startAddr, endAddr, comment, member, userName string) string {
 	return fmt.Sprintf(`
-	action "nios_restart_services" "dhcpv4" {
-	  config {
-		services       = ["DHCPV4"]
-		restart_option = "FORCE_RESTART"
-		members = [%q]
-		user_name = %q
-		mode = "SEQUENTIAL"
-	  }
+action "nios_restart_services" "dhcpv4" {
+  config {
+    services       = ["DHCPV4"]
+    restart_option = "FORCE_RESTART"
+    members        = [%q]
+    user_name      = %q
+    mode           = "SEQUENTIAL"
+  }
 }
-	resource "nios_dhcp_range" "test" {
-    	start_addr = %q
-    	end_addr   = %q
-		comment    = %q
-		
-		lifecycle {
+
+resource "nios_dhcp_range" "test" {
+  start_addr = %q
+  end_addr   = %q
+  comment    = %q
+
+  lifecycle {
     action_trigger {
       events  = [after_update]
       actions = [action.nios_restart_services.dhcpv4]
@@ -114,36 +112,37 @@ func testAccRestartServicesActionMembers(startAddr, endAddr, comment, member, us
 `, member, userName, startAddr, endAddr, comment)
 }
 
-func testAccRestartServicesActionGroups(ipv6addr, duid, networkView, ipv6Network string) string {
+func testAccRestartServicesAction_DHCPv6(ipv6addr, duid, networkView, ipv6Network string) string {
 	return fmt.Sprintf(`
-	action "nios_restart_services" "dhcpv6" {
+action "nios_restart_services" "dhcpv6" {
   config {
     services       = ["DHCPV6"]
     restart_option = "RESTART_IF_NEEDED"
-mode = "SIMULTANEOUS"
+    mode           = "SIMULTANEOUS"
   }
-}
-
-	resource "nios_ipam_ipv6network" "test_ipv6_network" {
-  network      = %q
-  network_view = nios_ipam_network_view.parent_network_view.name
 }
 
 resource "nios_ipam_network_view" "parent_network_view" {
   name = %q
 }
-resource "nios_dhcp_ipv6fixedaddress" "test" {
- ipv6addr = %q
- duid = %q
- network = nios_ipam_ipv6network.test_ipv6_network.network
- network_view = nios_ipam_network_view.parent_network_view.name
 
-lifecycle {
+resource "nios_ipam_ipv6network" "test_ipv6_network" {
+  network      = %q
+  network_view = nios_ipam_network_view.parent_network_view.name
+}
+
+resource "nios_dhcp_ipv6fixedaddress" "test" {
+  ipv6addr     = %q
+  duid         = %q
+  network      = nios_ipam_ipv6network.test_ipv6_network.network
+  network_view = nios_ipam_network_view.parent_network_view.name
+
+  lifecycle {
     action_trigger {
       events  = [after_create]
       actions = [action.nios_restart_services.dhcpv6]
     }
   }
 }
-`, ipv6Network, networkView, ipv6addr, duid)
+`, networkView, ipv6Network, ipv6addr, duid)
 }
