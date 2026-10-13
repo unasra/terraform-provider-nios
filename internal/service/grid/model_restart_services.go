@@ -81,7 +81,7 @@ func (m *RestartServicesModel) Expand(ctx context.Context, diags *diag.Diagnosti
 		return nil
 	}
 	return &grid.GridFunctionCall{
-		GridFunctionCallOneOf: &grid.GridFunctionCallOneOf{
+		RestartServiceActionRequest: &grid.RestartServiceActionRequest{
 			Groups:        flex.ExpandFrameworkListStringEmptyAsNil(ctx, m.Groups, diags),
 			Members:       flex.ExpandFrameworkListStringEmptyAsNil(ctx, m.Members, diags),
 			Mode:          flex.ExpandStringPointer(m.Mode),

@@ -14,11 +14,11 @@ import (
 	"encoding/json"
 )
 
-// checks if the GridFunctionCallOneOf type satisfies the MappedNullable interface at compile time
-var _ MappedNullable = &GridFunctionCallOneOf{}
+// checks if the RestartServiceActionRequest type satisfies the MappedNullable interface at compile time
+var _ MappedNullable = &RestartServiceActionRequest{}
 
-// GridFunctionCallOneOf The request format for Restart Services Function Call.
-type GridFunctionCallOneOf struct {
+// RestartServiceActionRequest The request format for Restart Services Function Call.
+type RestartServiceActionRequest struct {
 	// Service Restart Group names to restart. Conflicts with `members`. If both are omitted, NIOS uses the default restart group.
 	Groups []string `json:"groups,omitempty"`
 	// Grid Member names to restart. Conflicts with `groups`. If both are omitted, NIOS uses the default restart group.
@@ -33,25 +33,25 @@ type GridFunctionCallOneOf struct {
 	UserName *string `json:"user_name,omitempty"`
 }
 
-// NewGridFunctionCallOneOf instantiates a new GridFunctionCallOneOf object
+// NewRestartServiceActionRequest instantiates a new RestartServiceActionRequest object
 // This constructor will assign default values to properties that have it defined,
 // and makes sure properties required by API are set, but the set of arguments
 // will change when the set of required properties is changed
-func NewGridFunctionCallOneOf() *GridFunctionCallOneOf {
-	this := GridFunctionCallOneOf{}
+func NewRestartServiceActionRequest() *RestartServiceActionRequest {
+	this := RestartServiceActionRequest{}
 	return &this
 }
 
-// NewGridFunctionCallOneOfWithDefaults instantiates a new GridFunctionCallOneOf object
+// NewRestartServiceActionRequestWithDefaults instantiates a new RestartServiceActionRequest object
 // This constructor will only assign default values to properties that have it defined,
 // but it doesn't guarantee that properties required by API are set
-func NewGridFunctionCallOneOfWithDefaults() *GridFunctionCallOneOf {
-	this := GridFunctionCallOneOf{}
+func NewRestartServiceActionRequestWithDefaults() *RestartServiceActionRequest {
+	this := RestartServiceActionRequest{}
 	return &this
 }
 
 // GetGroups returns the Groups field value if set, zero value otherwise.
-func (o *GridFunctionCallOneOf) GetGroups() []string {
+func (o *RestartServiceActionRequest) GetGroups() []string {
 	if o == nil || IsNil(o.Groups) {
 		var ret []string
 		return ret
@@ -61,7 +61,7 @@ func (o *GridFunctionCallOneOf) GetGroups() []string {
 
 // GetGroupsOk returns a tuple with the Groups field value if set, nil otherwise
 // and a boolean to check if the value has been set.
-func (o *GridFunctionCallOneOf) GetGroupsOk() ([]string, bool) {
+func (o *RestartServiceActionRequest) GetGroupsOk() ([]string, bool) {
 	if o == nil || IsNil(o.Groups) {
 		return nil, false
 	}
@@ -69,7 +69,7 @@ func (o *GridFunctionCallOneOf) GetGroupsOk() ([]string, bool) {
 }
 
 // HasGroups returns a boolean if a field has been set.
-func (o *GridFunctionCallOneOf) HasGroups() bool {
+func (o *RestartServiceActionRequest) HasGroups() bool {
 	if o != nil && !IsNil(o.Groups) {
 		return true
 	}
@@ -78,12 +78,12 @@ func (o *GridFunctionCallOneOf) HasGroups() bool {
 }
 
 // SetGroups gets a reference to the given []string and assigns it to the Groups field.
-func (o *GridFunctionCallOneOf) SetGroups(v []string) {
+func (o *RestartServiceActionRequest) SetGroups(v []string) {
 	o.Groups = v
 }
 
 // GetMembers returns the Members field value if set, zero value otherwise.
-func (o *GridFunctionCallOneOf) GetMembers() []string {
+func (o *RestartServiceActionRequest) GetMembers() []string {
 	if o == nil || IsNil(o.Members) {
 		var ret []string
 		return ret
@@ -93,7 +93,7 @@ func (o *GridFunctionCallOneOf) GetMembers() []string {
 
 // GetMembersOk returns a tuple with the Members field value if set, nil otherwise
 // and a boolean to check if the value has been set.
-func (o *GridFunctionCallOneOf) GetMembersOk() ([]string, bool) {
+func (o *RestartServiceActionRequest) GetMembersOk() ([]string, bool) {
 	if o == nil || IsNil(o.Members) {
 		return nil, false
 	}
@@ -101,7 +101,7 @@ func (o *GridFunctionCallOneOf) GetMembersOk() ([]string, bool) {
 }
 
 // HasMembers returns a boolean if a field has been set.
-func (o *GridFunctionCallOneOf) HasMembers() bool {
+func (o *RestartServiceActionRequest) HasMembers() bool {
 	if o != nil && !IsNil(o.Members) {
 		return true
 	}
@@ -110,12 +110,12 @@ func (o *GridFunctionCallOneOf) HasMembers() bool {
 }
 
 // SetMembers gets a reference to the given []string and assigns it to the Members field.
-func (o *GridFunctionCallOneOf) SetMembers(v []string) {
+func (o *RestartServiceActionRequest) SetMembers(v []string) {
 	o.Members = v
 }
 
 // GetMode returns the Mode field value if set, zero value otherwise.
-func (o *GridFunctionCallOneOf) GetMode() string {
+func (o *RestartServiceActionRequest) GetMode() string {
 	if o == nil || IsNil(o.Mode) {
 		var ret string
 		return ret
@@ -125,7 +125,7 @@ func (o *GridFunctionCallOneOf) GetMode() string {
 
 // GetModeOk returns a tuple with the Mode field value if set, nil otherwise
 // and a boolean to check if the value has been set.
-func (o *GridFunctionCallOneOf) GetModeOk() (*string, bool) {
+func (o *RestartServiceActionRequest) GetModeOk() (*string, bool) {
 	if o == nil || IsNil(o.Mode) {
 		return nil, false
 	}
@@ -133,7 +133,7 @@ func (o *GridFunctionCallOneOf) GetModeOk() (*string, bool) {
 }
 
 // HasMode returns a boolean if a field has been set.
-func (o *GridFunctionCallOneOf) HasMode() bool {
+func (o *RestartServiceActionRequest) HasMode() bool {
 	if o != nil && !IsNil(o.Mode) {
 		return true
 	}
@@ -142,12 +142,12 @@ func (o *GridFunctionCallOneOf) HasMode() bool {
 }
 
 // SetMode gets a reference to the given string and assigns it to the Mode field.
-func (o *GridFunctionCallOneOf) SetMode(v string) {
+func (o *RestartServiceActionRequest) SetMode(v string) {
 	o.Mode = &v
 }
 
 // GetRestartOption returns the RestartOption field value if set, zero value otherwise.
-func (o *GridFunctionCallOneOf) GetRestartOption() string {
+func (o *RestartServiceActionRequest) GetRestartOption() string {
 	if o == nil || IsNil(o.RestartOption) {
 		var ret string
 		return ret
@@ -157,7 +157,7 @@ func (o *GridFunctionCallOneOf) GetRestartOption() string {
 
 // GetRestartOptionOk returns a tuple with the RestartOption field value if set, nil otherwise
 // and a boolean to check if the value has been set.
-func (o *GridFunctionCallOneOf) GetRestartOptionOk() (*string, bool) {
+func (o *RestartServiceActionRequest) GetRestartOptionOk() (*string, bool) {
 	if o == nil || IsNil(o.RestartOption) {
 		return nil, false
 	}
@@ -165,7 +165,7 @@ func (o *GridFunctionCallOneOf) GetRestartOptionOk() (*string, bool) {
 }
 
 // HasRestartOption returns a boolean if a field has been set.
-func (o *GridFunctionCallOneOf) HasRestartOption() bool {
+func (o *RestartServiceActionRequest) HasRestartOption() bool {
 	if o != nil && !IsNil(o.RestartOption) {
 		return true
 	}
@@ -174,12 +174,12 @@ func (o *GridFunctionCallOneOf) HasRestartOption() bool {
 }
 
 // SetRestartOption gets a reference to the given string and assigns it to the RestartOption field.
-func (o *GridFunctionCallOneOf) SetRestartOption(v string) {
+func (o *RestartServiceActionRequest) SetRestartOption(v string) {
 	o.RestartOption = &v
 }
 
 // GetServices returns the Services field value if set, zero value otherwise.
-func (o *GridFunctionCallOneOf) GetServices() []string {
+func (o *RestartServiceActionRequest) GetServices() []string {
 	if o == nil || IsNil(o.Services) {
 		var ret []string
 		return ret
@@ -189,7 +189,7 @@ func (o *GridFunctionCallOneOf) GetServices() []string {
 
 // GetServicesOk returns a tuple with the Services field value if set, nil otherwise
 // and a boolean to check if the value has been set.
-func (o *GridFunctionCallOneOf) GetServicesOk() ([]string, bool) {
+func (o *RestartServiceActionRequest) GetServicesOk() ([]string, bool) {
 	if o == nil || IsNil(o.Services) {
 		return nil, false
 	}
@@ -197,7 +197,7 @@ func (o *GridFunctionCallOneOf) GetServicesOk() ([]string, bool) {
 }
 
 // HasServices returns a boolean if a field has been set.
-func (o *GridFunctionCallOneOf) HasServices() bool {
+func (o *RestartServiceActionRequest) HasServices() bool {
 	if o != nil && !IsNil(o.Services) {
 		return true
 	}
@@ -206,12 +206,12 @@ func (o *GridFunctionCallOneOf) HasServices() bool {
 }
 
 // SetServices gets a reference to the given []string and assigns it to the Services field.
-func (o *GridFunctionCallOneOf) SetServices(v []string) {
+func (o *RestartServiceActionRequest) SetServices(v []string) {
 	o.Services = v
 }
 
 // GetUserName returns the UserName field value if set, zero value otherwise.
-func (o *GridFunctionCallOneOf) GetUserName() string {
+func (o *RestartServiceActionRequest) GetUserName() string {
 	if o == nil || IsNil(o.UserName) {
 		var ret string
 		return ret
@@ -221,7 +221,7 @@ func (o *GridFunctionCallOneOf) GetUserName() string {
 
 // GetUserNameOk returns a tuple with the UserName field value if set, nil otherwise
 // and a boolean to check if the value has been set.
-func (o *GridFunctionCallOneOf) GetUserNameOk() (*string, bool) {
+func (o *RestartServiceActionRequest) GetUserNameOk() (*string, bool) {
 	if o == nil || IsNil(o.UserName) {
 		return nil, false
 	}
@@ -229,7 +229,7 @@ func (o *GridFunctionCallOneOf) GetUserNameOk() (*string, bool) {
 }
 
 // HasUserName returns a boolean if a field has been set.
-func (o *GridFunctionCallOneOf) HasUserName() bool {
+func (o *RestartServiceActionRequest) HasUserName() bool {
 	if o != nil && !IsNil(o.UserName) {
 		return true
 	}
@@ -238,11 +238,11 @@ func (o *GridFunctionCallOneOf) HasUserName() bool {
 }
 
 // SetUserName gets a reference to the given string and assigns it to the UserName field.
-func (o *GridFunctionCallOneOf) SetUserName(v string) {
+func (o *RestartServiceActionRequest) SetUserName(v string) {
 	o.UserName = &v
 }
 
-func (o GridFunctionCallOneOf) MarshalJSON() ([]byte, error) {
+func (o RestartServiceActionRequest) MarshalJSON() ([]byte, error) {
 	toSerialize, err := o.ToMap()
 	if err != nil {
 		return []byte{}, err
@@ -250,7 +250,7 @@ func (o GridFunctionCallOneOf) MarshalJSON() ([]byte, error) {
 	return json.Marshal(toSerialize)
 }
 
-func (o GridFunctionCallOneOf) ToMap() (map[string]interface{}, error) {
+func (o RestartServiceActionRequest) ToMap() (map[string]interface{}, error) {
 	toSerialize := map[string]interface{}{}
 	if !IsNil(o.Groups) {
 		toSerialize["groups"] = o.Groups
@@ -273,38 +273,38 @@ func (o GridFunctionCallOneOf) ToMap() (map[string]interface{}, error) {
 	return toSerialize, nil
 }
 
-type NullableGridFunctionCallOneOf struct {
-	value *GridFunctionCallOneOf
+type NullableRestartServiceActionRequest struct {
+	value *RestartServiceActionRequest
 	isSet bool
 }
 
-func (v NullableGridFunctionCallOneOf) Get() *GridFunctionCallOneOf {
+func (v NullableRestartServiceActionRequest) Get() *RestartServiceActionRequest {
 	return v.value
 }
 
-func (v *NullableGridFunctionCallOneOf) Set(val *GridFunctionCallOneOf) {
+func (v *NullableRestartServiceActionRequest) Set(val *RestartServiceActionRequest) {
 	v.value = val
 	v.isSet = true
 }
 
-func (v NullableGridFunctionCallOneOf) IsSet() bool {
+func (v NullableRestartServiceActionRequest) IsSet() bool {
 	return v.isSet
 }
 
-func (v *NullableGridFunctionCallOneOf) Unset() {
+func (v *NullableRestartServiceActionRequest) Unset() {
 	v.value = nil
 	v.isSet = false
 }
 
-func NewNullableGridFunctionCallOneOf(val *GridFunctionCallOneOf) *NullableGridFunctionCallOneOf {
-	return &NullableGridFunctionCallOneOf{value: val, isSet: true}
+func NewNullableRestartServiceActionRequest(val *RestartServiceActionRequest) *NullableRestartServiceActionRequest {
+	return &NullableRestartServiceActionRequest{value: val, isSet: true}
 }
 
-func (v NullableGridFunctionCallOneOf) MarshalJSON() ([]byte, error) {
+func (v NullableRestartServiceActionRequest) MarshalJSON() ([]byte, error) {
 	return json.Marshal(v.value)
 }
 
-func (v *NullableGridFunctionCallOneOf) UnmarshalJSON(src []byte) error {
+func (v *NullableRestartServiceActionRequest) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
