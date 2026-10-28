@@ -73,7 +73,3 @@ func GetNIOSSyslogEndpointRef() string {
 func GetSubscriberBlockSizeEditable() string {
 	return os.Getenv("SUBSCRIBER_BLOCK_SIZE_EDITABLE")
 }
-
-func GetServiceRestartGroupName() string {
-	return os.Getenv("NIOS_SERVICE_RESTART_GROUP_NAME")
-}

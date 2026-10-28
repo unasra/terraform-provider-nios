@@ -77,9 +77,14 @@ func (a *RestartServicesAction) Invoke(ctx context.Context, req action.InvokeReq
 
 	gridRef := grids[0].GetRef()
 
+	payload := data.Expand(ctx, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	httpResp, err := a.client.GridAPI.GridAPI.
 		CreateFunctionCall(ctx, utils.ExtractResourceRef(gridRef)).
-		GridFunctionCall(*data.Expand(ctx, &resp.Diagnostics)).
+		GridFunctionCall(*payload).
 		ReturnAsObject(1).
 		Function("restartservices").
 		Execute()

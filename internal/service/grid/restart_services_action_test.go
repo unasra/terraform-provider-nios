@@ -6,6 +6,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/infobloxopen/terraform-provider-nios/internal/acctest"
+	"github.com/infobloxopen/terraform-provider-nios/internal/utils"
 )
 
 func TestRestartServicesAction_DNS(t *testing.T) {
@@ -15,7 +16,7 @@ func TestRestartServicesAction_DNS(t *testing.T) {
 		Steps: []resource.TestStep{
 			// Forces restart of DNS Service in GROUPED mode after DNS View creation
 			{
-				Config: testAccRestartServicesAction_DNS(),
+				Config: testaccrestartservicesactionDns(),
 			},
 			// Delete testing automatically occurs in TestCase
 		},
@@ -25,6 +26,7 @@ func TestRestartServicesAction_DNS(t *testing.T) {
 func TestRestartServicesAction_DHCPv4(t *testing.T) {
 	startAddr := "10.0.0.111"
 	endAddr := "10.0.0.121"
+	memberName := utils.GetNIOSGridMemberHostName()
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t) },
@@ -36,7 +38,7 @@ func TestRestartServicesAction_DHCPv4(t *testing.T) {
 			},
 			// Forces restart of DHCPv4 Service in SEQUENTIAL mode after DHCP Range comment update
 			{
-				Config: testAccRestartServicesAction_DHCPv4(startAddr, endAddr, "updated comment", "infoblox.172_28_83_185", "admin"),
+				Config: testAccRestartServicesAction_DHCPv4(startAddr, endAddr, "updated comment", memberName, "admin"),
 			},
 			// Delete testing automatically occurs in TestCase
 		},
@@ -62,7 +64,7 @@ func TestRestartServicesAction_DHCPv6(t *testing.T) {
 	})
 }
 
-func testAccRestartServicesAction_DNS() string {
+func testaccrestartservicesactionDns() string {
 	return `
 action "nios_restart_services" "dns" {
   config {

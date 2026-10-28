@@ -17,13 +17,13 @@ import (
 
 // GridFunctionCall - struct for GridFunctionCall
 type GridFunctionCall struct {
-	RestartServiceActionRequest *RestartServiceActionRequest
+	GridFunctionCallOneOf *GridFunctionCallOneOf
 }
 
-// RestartServiceActionRequestAsGridFunctionCall is a convenience function that returns RestartServiceActionRequest wrapped in GridFunctionCall
-func RestartServiceActionRequestAsGridFunctionCall(v *RestartServiceActionRequest) GridFunctionCall {
+// GridFunctionCallOneOfAsGridFunctionCall is a convenience function that returns GridFunctionCallOneOf wrapped in GridFunctionCall
+func GridFunctionCallOneOfAsGridFunctionCall(v *GridFunctionCallOneOf) GridFunctionCall {
 	return GridFunctionCall{
-		RestartServiceActionRequest: v,
+		GridFunctionCallOneOf: v,
 	}
 }
 
@@ -31,22 +31,22 @@ func RestartServiceActionRequestAsGridFunctionCall(v *RestartServiceActionReques
 func (dst *GridFunctionCall) UnmarshalJSON(data []byte) error {
 	var err error
 	match := 0
-	// try to unmarshal data into RestartServiceActionRequest
-	err = newStrictDecoder(data).Decode(&dst.RestartServiceActionRequest)
+	// try to unmarshal data into GridFunctionCallOneOf
+	err = newStrictDecoder(data).Decode(&dst.GridFunctionCallOneOf)
 	if err == nil {
-		jsonRestartServiceActionRequest, _ := json.Marshal(dst.RestartServiceActionRequest)
-		if string(jsonRestartServiceActionRequest) == "{}" { // empty struct
-			dst.RestartServiceActionRequest = nil
+		jsonGridFunctionCallOneOf, _ := json.Marshal(dst.GridFunctionCallOneOf)
+		if string(jsonGridFunctionCallOneOf) == "{}" { // empty struct
+			dst.GridFunctionCallOneOf = nil
 		} else {
 			match++
 		}
 	} else {
-		dst.RestartServiceActionRequest = nil
+		dst.GridFunctionCallOneOf = nil
 	}
 
 	if match > 1 { // more than 1 match
 		// reset to nil
-		dst.RestartServiceActionRequest = nil
+		dst.GridFunctionCallOneOf = nil
 
 		return fmt.Errorf("data matches more than one schema in oneOf(GridFunctionCall)")
 	} else if match == 1 {
@@ -58,8 +58,8 @@ func (dst *GridFunctionCall) UnmarshalJSON(data []byte) error {
 
 // Marshal data from the first non-nil pointers in the struct to JSON
 func (src GridFunctionCall) MarshalJSON() ([]byte, error) {
-	if src.RestartServiceActionRequest != nil {
-		return json.Marshal(&src.RestartServiceActionRequest)
+	if src.GridFunctionCallOneOf != nil {
+		return json.Marshal(&src.GridFunctionCallOneOf)
 	}
 
 	return nil, nil // no data in oneOf schemas
@@ -70,8 +70,8 @@ func (obj *GridFunctionCall) GetActualInstance() interface{} {
 	if obj == nil {
 		return nil
 	}
-	if obj.RestartServiceActionRequest != nil {
-		return obj.RestartServiceActionRequest
+	if obj.GridFunctionCallOneOf != nil {
+		return obj.GridFunctionCallOneOf
 	}
 
 	// all schemas are nil
